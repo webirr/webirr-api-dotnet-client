@@ -17,6 +17,46 @@ namespace WeBirr.Test
 
         }
 
+        [Test]
+        public async Task CreateBill_should_get_error_from_WebService_on_invalid_api_key_ProdEnv()
+        {
+            var bill = sampleBill();
+            var api = new WeBirrClient("x", false);
+
+            var res = await api.CreateBill(bill);
+            Assert.IsTrue(res.error.Length > 0);
+
+        }
+
+        [Test]
+        public async Task UpdateBill_should_get_error_from_WebService_on_invalid_api_key()
+        {
+            var bill = sampleBill();
+            var api = new WeBirrClient("x", true);
+
+            var res = await api.UpdateBill(bill);
+            Assert.IsTrue(res.error.Length > 0);
+
+        }
+
+        [Test]
+        public async Task DeleteBill_should_get_error_from_WebService_on_invalid_api_key()
+        {
+            var api = new WeBirrClient("x", true);
+            var res = await api.DeleteBill("xxxx");
+
+            Assert.IsTrue(res.error.Length > 0); // should contain error
+        }
+
+        [Test]
+        public async Task GetPaymentStatus_should_get_error_from_WebService_on_invalid_api_key()
+        {
+            var api = new WeBirrClient("x", true);
+            var res = await api.GetPaymentStatus("xxxx");
+
+            Assert.IsTrue(res.error.Length > 0); // should contain error
+        }
+
         Bill sampleBill() => new Bill
         {
             amount = "270.90",
