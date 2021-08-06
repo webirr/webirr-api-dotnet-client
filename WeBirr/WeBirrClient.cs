@@ -29,7 +29,7 @@ namespace WeBirr
         /// </summary>
         /// <param name="bill">Bill object to be created</param>
         /// <returns></returns>
-        public async Task<ApiResponse<String>> CreateBill(Bill bill)
+        public async Task<ApiResponse<String>> CreateBillAsync(Bill bill)
         {
             var client = new HttpClient();
 
@@ -51,7 +51,7 @@ namespace WeBirr
         /// The billReference has to be the same as the original bill created.
         /// Check if(ApiResponse.error == null) to see if there are errors.
         /// ApiResponse.res will have the value of "OK" on success.
-        public async Task<ApiResponse<String>> UpdateBill(Bill bill)
+        public async Task<ApiResponse<String>> UpdateBillAsync(Bill bill)
         {
             var client = new HttpClient();
 
@@ -73,7 +73,7 @@ namespace WeBirr
         /// [paymentCode] is the number that WeBirr Payment Gateway returns on createBill.
         /// Check if(ApiResponse.error == null) to see if there are errors.
         /// ApiResponse.res will have the value of "OK" on success.
-        public async Task<ApiResponse<String>> DeleteBill(String paymentCode)
+        public async Task<ApiResponse<String>> DeleteBillAsync(String paymentCode)
         {
             var client = new HttpClient();
 
@@ -94,7 +94,7 @@ namespace WeBirr
         /// ApiResponse.res will have `Payment` object on success (will be null otherwise!)
         /// ApiResponse.res?.isPaid ?? false -> will return true if the bill is paid (payment completed)
         /// ApiResponse.res?.data ?? null -> will have `PaymentDetail` object
-        public async Task<ApiResponse<Payment>> GetPaymentStatus(String paymentCode)
+        public async Task<ApiResponse<Payment>> GetPaymentStatusAsync(String paymentCode)
         {
             var client = new HttpClient();
 

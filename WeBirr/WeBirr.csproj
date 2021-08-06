@@ -4,7 +4,7 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <RootNamespace>WeBirr</RootNamespace>
     <PackageId>WeBirr</PackageId>
-    <Version>1.0.1</Version>
+    <Version>1.0.2</Version>
     <Authors>WeBirr</Authors>
     <Product>WeBirr</Product>
     <Description>Official .NET Client Library for WeBirr Payment Gateway APIs</Description>

@@ -42,13 +42,13 @@ namespace WeBirr.Example
 
         static async Task Main(string[] args)
         {
-            await CreateAndUpdateBill();
-            await GeytPaymentStatus();
-            await DeleteBill();
+            await CreateAndUpdateBillAsync();
+            await GetPaymentStatusAsync();
+            await DeleteBillAsync();
         }
 
         /// Creating a new Bill / Updating an existing Bill on WeBirr Servers
-        public static async Task CreateAndUpdateBill()
+        public static async Task CreateAndUpdateBillAsync()
         {
             var api = new WeBirrClient(apikey: apikey, isTestEnv: true);
 
@@ -65,7 +65,7 @@ namespace WeBirr.Example
 
             Console.WriteLine("Creating Bill...");
 
-            var res = await api.CreateBill(bill);
+            var res = await api.CreateBillAsync(bill);
 
             if (res.error == null)
             {
@@ -88,12 +88,12 @@ namespace WeBirr.Example
 
 
             Console.WriteLine("Updating Bill...");
-            res = await api.UpdateBill(bill);
+            res = await api.UpdateBillAsync(bill);
 
             if (res.error == null)
             {
                 // success
-                Console.WriteLine("bill is updated succesfully"); //res.res will be 'OK'  no need to check here!
+                Console.WriteLine("bill is updated successfully"); //res.res will be 'OK'  no need to check here!
             }
             else
             {
@@ -105,19 +105,19 @@ namespace WeBirr.Example
         }
 
         /// Deleting an existing Bill from WeBirr Servers (if it is not paid)
-        public static async Task DeleteBill()
+        public static async Task DeleteBillAsync()
         {
             var api = new WeBirrClient(apikey: apikey, isTestEnv: true);
 
             var paymentCode = "PAYMENT_CODE_YOU_SAVED_AFTER_CREATING_A_NEW_BILL"; // suchas as '141 263 782';
 
             Console.WriteLine("Deleting Bill...");
-            var res = await api.DeleteBill(paymentCode);
+            var res = await api.DeleteBillAsync(paymentCode);
 
             if (res.error == null)
             {
                 // success
-                Console.WriteLine("bill is deleted succesfully"); //res.res will be 'OK'  no need to check here!
+                Console.WriteLine("bill is deleted successfully"); //res.res will be 'OK'  no need to check here!
             }
             else
             {
@@ -129,14 +129,14 @@ namespace WeBirr.Example
         }
 
         /// Getting Payment status of an existing Bill from WeBirr Servers
-        public static async Task GeytPaymentStatus()
+        public static async Task GetPaymentStatusAsync()
         {
             var api = new WeBirrClient(apikey: apikey, isTestEnv: true);
 
             var paymentCode = "PAYMENT_CODE_YOU_SAVED_AFTER_CREATING_A_NEW_BILL"; // suchas as '141 263 782';
 
             Console.WriteLine("Getting Payment Status...");
-            var r = await api.GetPaymentStatus(paymentCode);
+            var r = await api.GetPaymentStatusAsync(paymentCode);
 
             if (r.error == null)
             {
@@ -163,7 +163,6 @@ namespace WeBirr.Example
 
     }
 }
-
 
 ```
 
