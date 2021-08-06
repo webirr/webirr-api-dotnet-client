@@ -12,8 +12,8 @@ namespace WeBirr.Test
             var bill = sampleBill();
             var api = new WeBirrClient("x", true);
 
-            var res = await api.CreateBill(bill);
-            Assert.IsTrue(res.error.Length > 0);
+            var res = await api.CreateBillAsync(bill);
+            Assert.IsTrue(res.errorCode.Length > 0);
 
         }
 
@@ -23,8 +23,8 @@ namespace WeBirr.Test
             var bill = sampleBill();
             var api = new WeBirrClient("x", false);
 
-            var res = await api.CreateBill(bill);
-            Assert.IsTrue(res.error.Length > 0);
+            var res = await api.CreateBillAsync(bill);
+            Assert.IsTrue(res.errorCode.Length > 0);
 
         }
 
@@ -34,8 +34,8 @@ namespace WeBirr.Test
             var bill = sampleBill();
             var api = new WeBirrClient("x", true);
 
-            var res = await api.UpdateBill(bill);
-            Assert.IsTrue(res.error.Length > 0);
+            var res = await api.UpdateBillAsync(bill);
+            Assert.IsTrue(res.errorCode.Length > 0);
 
         }
 
@@ -43,18 +43,18 @@ namespace WeBirr.Test
         public async Task DeleteBill_should_get_error_from_WebService_on_invalid_api_key()
         {
             var api = new WeBirrClient("x", true);
-            var res = await api.DeleteBill("xxxx");
+            var res = await api.DeleteBillAsync("xxxx");
 
-            Assert.IsTrue(res.error.Length > 0); // should contain error
+            Assert.IsTrue(res.error.Length > 0); // should contain error, erroCode is not implemented for deleteBill 
         }
 
         [Test]
         public async Task GetPaymentStatus_should_get_error_from_WebService_on_invalid_api_key()
         {
             var api = new WeBirrClient("x", true);
-            var res = await api.GetPaymentStatus("xxxx");
+            var res = await api.GetPaymentStatusAsync("xxxx");
 
-            Assert.IsTrue(res.error.Length > 0); // should contain error
+            Assert.IsTrue(res.errorCode.Length > 0); // should contain error
         }
 
         Bill sampleBill() => new Bill
