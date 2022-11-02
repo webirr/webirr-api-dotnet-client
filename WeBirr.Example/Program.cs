@@ -32,7 +32,11 @@ namespace WeBirr.Example
                 description = "hotel booking",
                 billReference = "dotnet/2021/132",  // your unique reference number
                 merchantID = merchantId,
+               // customerPhone = "0968817878" // to use sms notification merchant needs to be activated at WeBirr
             };
+
+            //bill.extras["newfield"] = "new value";  // extras is reserved for future use
+            //bill.extras["newcommand"] = "new value";
 
             Console.WriteLine("Creating Bill...");
 
