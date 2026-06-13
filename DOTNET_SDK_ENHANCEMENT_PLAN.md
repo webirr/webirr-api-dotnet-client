@@ -159,7 +159,8 @@ Task<ApiResponse<Stat>> GetStatAsync(string dateFrom, string dateTo);
 ```
 
 Naming note: keep existing lower-case JSON property names in DTOs unless we
-decide to add `[JsonProperty]` mappings. This reduces package behavior risk.
+need explicit `System.Text.Json` `[JsonPropertyName]` mappings. This reduces
+package behavior risk.
 
 ## Cursor Behavior For Bill Sync
 

@@ -1,25 +1,25 @@
-using Newtonsoft.Json;
+using System.Text.Json.Serialization;
 
 namespace WeBirr
 {
     public class Stat
     {
-        [JsonProperty("NBills")]
+        [JsonPropertyName("NBills")]
         public int nBills { get; set; }
 
-        [JsonProperty("NBillsPaid")]
+        [JsonPropertyName("NBillsPaid")]
         public int nBillsPaid { get; set; }
 
-        [JsonProperty("NBillsUnpaid")]
+        [JsonPropertyName("NBillsUnpaid")]
         public int nBillsUnpaid { get; set; }
 
-        [JsonProperty("AmountBills")]
+        [JsonPropertyName("AmountBills")]
         public string amountBills { get; set; }
 
-        [JsonProperty("AmountPaid")]
+        [JsonPropertyName("AmountPaid")]
         public string amountPaid { get; set; }
 
-        [JsonProperty("AmountUnpaid")]
+        [JsonPropertyName("AmountUnpaid")]
         public string amountUnpaid { get; set; }
     }
 }

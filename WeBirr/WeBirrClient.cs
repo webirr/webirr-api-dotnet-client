@@ -4,8 +4,8 @@ using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
-using Newtonsoft.Json;
 
 namespace WeBirr
 {
@@ -19,6 +19,10 @@ namespace WeBirr
         readonly string _merchantId;
         readonly string _apiKey;
         readonly HttpClient _client;
+        static readonly JsonSerializerOptions JsonOptions = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        };
 
         public WeBirrClient(string apikey, bool isTestEnv)
             : this("", apikey, isTestEnv)
@@ -156,7 +160,7 @@ namespace WeBirr
         async Task<ApiResponse<T>> SendJsonAsync<T>(HttpMethod method, string path, object body) where T : class
         {
             var request = new HttpRequestMessage(method, BuildUrl(path));
-            request.Content = new StringContent(JsonConvert.SerializeObject(body), Encoding.UTF8, "application/json");
+            request.Content = new StringContent(JsonSerializer.Serialize(body, JsonOptions), Encoding.UTF8, "application/json");
             return await SendAsync<T>(request);
         }
 
@@ -174,7 +178,8 @@ namespace WeBirr
             }
 
             var body = await resp.Content.ReadAsStringAsync();
-            return JsonConvert.DeserializeObject<ApiResponse<T>>(body);
+            return JsonSerializer.Deserialize<ApiResponse<T>>(body, JsonOptions)
+                ?? new ApiResponse<T> { error = "empty response" };
         }
 
         string BuildUrl(string path, IDictionary<string, string> parameters = null)
