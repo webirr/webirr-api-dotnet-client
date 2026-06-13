@@ -58,12 +58,32 @@ gh release create v1.1.0 \
 
 ## NuGet Publish
 
-Publish only after Elias confirms the NuGet account/API key path.
+NuGet publish should use Trusted Publishing through GitHub Actions, not a
+long-lived API key.
+
+Create a NuGet Trusted Publishing policy before running the workflow:
+
+- Package owner: `WeBirr`
+- Repository owner: `webirr`
+- Repository: `webirr-api-dotnet-client`
+- Workflow file: `publish-nuget.yml`
+- Environment: leave empty
+
+For manual publishing of the current release, run GitHub Actions workflow
+`Publish NuGet` with:
+
+- version: `1.1.0`
+- nuget_user: the NuGet.org username/profile name for an active member of the
+  `WeBirr` NuGet organization
+
+For future tag-based publishing, set repository variable `NUGET_USER` to the
+same NuGet.org username/profile name, then push the release tag.
 
 ```bash
-dotnet nuget push WeBirr/bin/Release/WeBirr.1.1.0.nupkg \
-  --api-key "$NUGET_API_KEY" \
-  --source https://api.nuget.org/v3/index.json
+gh workflow run publish-nuget.yml \
+  --repo webirr/webirr-api-dotnet-client \
+  -f version=1.1.0 \
+  -f nuget_user=YOUR_NUGET_USERNAME
 ```
 
 ## NuGet Verification

@@ -1,7 +1,8 @@
 # .NET SDK Enhancement Plan
 
 Status: implemented locally for `1.1.0`; NuGet publish is still pending and
-should be done together with Elias.
+should be completed through GitHub Actions Trusted Publishing after creating
+the NuGet trusted publisher policy.
 
 ## Goal
 
@@ -286,17 +287,25 @@ Planned release commands:
 dotnet restore WeBirr.sln
 dotnet test WeBirr.sln
 dotnet pack WeBirr/WeBirr.csproj -c Release
-dotnet nuget push WeBirr/bin/Release/WeBirr.1.1.0.nupkg --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json
 ```
+
+Trusted Publishing:
+
+- workflow file: `.github/workflows/publish-nuget.yml`
+- NuGet package owner: `WeBirr`
+- GitHub repository owner: `webirr`
+- GitHub repository: `webirr-api-dotnet-client`
+- NuGet trusted publisher workflow file value: `publish-nuget.yml`
+- NuGet trusted publisher environment: leave empty
+- manual workflow input `nuget_user`: NuGet.org username/profile name, not an
+  email address
+- future tag workflow variable: repository variable `NUGET_USER`
 
 Secrets handling:
 
-- restricted source checked: `docs/webirr-docs/references/restricted/WeBirr Secrets.pdf`
-- the restricted PDF contains NuGet-related terms, but no secret values should
-  be copied into this repo, Markdown, commit messages, or chat
-- at release time, use the approved secret source privately to obtain or
-  confirm the NuGet API key/account
-- if the NuGet API key/account is missing or expired, ask Elias before release
+- do not use or store long-lived NuGet API keys for normal SDK publishing
+- do not copy NuGet keys into this repo, Markdown, commit messages, or chat
+- use NuGet Trusted Publishing to exchange GitHub OIDC for a short-lived token
 
 Public GitHub Release style:
 
@@ -323,7 +332,7 @@ Public GitHub Release style:
 | DOTNET-SDK-014 | done | Update examples and README to match PHP 2.1.2 coverage. |
 | DOTNET-SDK-015 | done | Modernize test/example target frameworks or release-machine runtime so tests run reliably. |
 | DOTNET-SDK-016 | done | Prepare NuGet release metadata, package README handling, and brief release notes. |
-| DOTNET-SDK-017 | todo | Verify NuGet credentials privately from the approved restricted source before publish. |
+| DOTNET-SDK-017 | done | Replace long-lived NuGet API key publishing with GitHub Actions Trusted Publishing. |
 | DOTNET-SDK-018 | done | Add endpoint-level .NET tests for every PHP client endpoint. |
 | DOTNET-SDK-019 | done | Add seven compiled .NET example workflows matching the PHP SDK examples. |
 
@@ -336,5 +345,6 @@ Public GitHub Release style:
    so they run on the current local release machine.
 3. Webhook guidance is covered by a compiled framework-neutral webhook handler
    example; a full ASP.NET Core host sample can be a later app-specific follow-up.
-4. NuGet publish is intentionally not done yet; it should be completed together
-   after confirming the NuGet API key/account path.
+4. NuGet publish is intentionally not done yet; it should be completed by
+   running the `Publish NuGet` GitHub Actions workflow after creating the
+   NuGet Trusted Publishing policy.
