@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
+using WeBirr.Example.Examples;
 
 namespace WeBirr.Example
 {
@@ -10,7 +10,71 @@ namespace WeBirr.Example
         static readonly string ApiKey = Environment.GetEnvironmentVariable("WEBIRR_TEST_ENV_API_KEY") ?? "";
         static readonly string MerchantId = Environment.GetEnvironmentVariable("WEBIRR_TEST_ENV_MERCHANT_ID") ?? "";
 
+        static readonly Dictionary<string, Func<Task>> Commands = new Dictionary<string, Func<Task>>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "create-update-bill", Example1CreateUpdateBill.RunAsync },
+            { "payment-status", Example2PaymentStatusSinglePoll.RunAsync },
+            { "delete-bill", Example3DeleteBill.RunAsync },
+            { "bulk-payment-polling", Example4PaymentStatusBulkPoll.RunAsync },
+            { "stat-report", Example5StatReport.RunAsync },
+            { "webhook", RunWebhookExampleAsync },
+            { "get-bill-and-list-bills", Example7GetBillAndListBills.RunAsync },
+            { "end-to-end", RunEndToEndAsync }
+        };
+
         static async Task Main(string[] args)
+        {
+            if (args.Length > 0)
+            {
+                if (Commands.TryGetValue(args[0], out var command))
+                {
+                    await command();
+                    return;
+                }
+
+                PrintCommands();
+                return;
+            }
+
+            await RunEndToEndAsync();
+        }
+
+        static void PrintCommands()
+        {
+            Console.WriteLine("Available examples:");
+            foreach (var command in Commands.Keys)
+            {
+                Console.WriteLine($"  dotnet run -- {command}");
+            }
+        }
+
+        static Task RunWebhookExampleAsync()
+        {
+            const string authKey = "please-change-me";
+            var payload = @"{
+                ""data"": {
+                    ""status"": 2,
+                    ""id"": 101,
+                    ""bankID"": ""test-bank"",
+                    ""paymentReference"": ""TX-1"",
+                    ""paymentDate"": ""2026-06-12 10:11:12"",
+                    ""confirmed"": true,
+                    ""confirmedTime"": ""2026-06-12 10:12:12"",
+                    ""canceled"": false,
+                    ""canceledTime"": ""0001-01-01 00:00:00"",
+                    ""amount"": ""278.00"",
+                    ""wbcCode"": ""123 456 789"",
+                    ""updateTimeStamp"": ""2026061210121200000""
+                }
+            }";
+
+            var result = Example6PaymentStatusWebhook.HandleRequest("POST", authKey, authKey, payload);
+            Console.WriteLine($"Status: {result.StatusCode}");
+            Console.WriteLine(result.Body);
+            return Task.CompletedTask;
+        }
+
+        static async Task RunEndToEndAsync()
         {
             if (string.IsNullOrEmpty(ApiKey) || string.IsNullOrEmpty(MerchantId))
             {
@@ -19,7 +83,7 @@ namespace WeBirr.Example
             }
 
             var api = new WeBirrClient(MerchantId, ApiKey, true);
-            var billReference = "dotnet/example/" + Guid.NewGuid();
+            var billReference = "dotnet/2021/" + DateTime.UtcNow.ToString("yyyyMMddHHmmss");
             string paymentCode = null;
 
             try
@@ -39,7 +103,7 @@ namespace WeBirr.Example
                 Console.WriteLine($"Payment Code = {paymentCode}");
 
                 bill.amount = "278.00";
-                bill.customerName = "SDK Test Customer Updated";
+                bill.customerName = "Elias dotnet";
 
                 Console.WriteLine("Updating Bill...");
                 var update = await api.UpdateBillAsync(bill);
@@ -66,10 +130,12 @@ namespace WeBirr.Example
                 var billByPaymentCode = await api.GetBillByPaymentCodeAsync(paymentCode);
                 Console.WriteLine($"Bill by payment code found: {billByPaymentCode.res?.wbcCode}");
 
-                var bills = await api.GetBillsAsync(paymentStatus: -1, lastTimeStamp: "", limit: 10);
+                var lastTimeStamp = "20251231"; // Date-only cursor; use "20251231235959" when you need time precision.
+
+                var bills = await api.GetBillsAsync(paymentStatus: -1, lastTimeStamp: lastTimeStamp, limit: 10);
                 Console.WriteLine($"Bills returned: {bills.res?.Count ?? 0}");
 
-                var payments = await api.GetPaymentsAsync(lastTimeStamp: "", limit: 10);
+                var payments = await api.GetPaymentsAsync(lastTimeStamp: lastTimeStamp, limit: 10);
                 foreach (var payment in payments.res ?? new List<PaymentResponse>())
                 {
                     Console.WriteLine($"Payment {payment.paymentReference}: {payment.amount} at {payment.paymentDate}");
@@ -93,7 +159,7 @@ namespace WeBirr.Example
         {
             amount = "270.90",
             customerCode = "cc01",
-            customerName = "SDK Test Customer",
+            customerName = "Elias Haileselassie",
             customerPhone = "0911000000",
             time = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm"),
             description = "hotel booking",

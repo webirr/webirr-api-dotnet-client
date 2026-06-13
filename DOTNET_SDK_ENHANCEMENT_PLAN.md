@@ -5,7 +5,7 @@ should be done together with Elias.
 
 ## Goal
 
-Bring the .NET SDK closer to the PHP `2.1.1` SDK while keeping the release
+Bring the .NET SDK in line with the PHP `2.1.2` SDK while keeping the release
 backward compatible for existing NuGet users.
 
 Expected release direction: `1.0.3` to `1.1.0`.
@@ -21,19 +21,19 @@ Current NuGet state checked during planning:
 
 ## PHP Reference
 
-Use PHP SDK `2.1.1` as the behavior baseline:
+Use PHP SDK `2.1.2` as the behavior baseline:
 
 | PHP method | Route | .NET status |
 | --- | --- | --- |
-| `createBill` | `POST /einvoice/api/bill` | existing method uses legacy `/einvoice/api/postbill` |
-| `updateBill` | `PUT /einvoice/api/bill` | existing method uses legacy `/einvoice/api/postbill` |
-| `deleteBill` | `DELETE /einvoice/api/bill?wbc_code=...` | existing method uses legacy `/einvoice/api/deletebill` |
-| `getPaymentStatus` | `GET /einvoice/api/paymentStatus?wbc_code=...` | existing method uses legacy `/einvoice/api/getPaymentStatus` |
-| `getBillByReference` | `GET /einvoice/api/bill?bill_reference=...` | missing |
-| `getBillByPaymentCode` | `GET /einvoice/api/bill?wbc_code=...` | missing |
-| `getPayments` | `GET /einvoice/api/payments?last_timestamp=...&limit=...` | missing |
-| `getBills` | `GET /einvoice/api/bills?payment_status=...&last_timestamp=...&limit=...` | missing |
-| `getStat` | `GET /merchant/stat?date_from=...&date_to=...` | missing |
+| `createBill` | `POST /einvoice/api/bill` | implemented by `CreateBillAsync` |
+| `updateBill` | `PUT /einvoice/api/bill` | implemented by `UpdateBillAsync` |
+| `deleteBill` | `DELETE /einvoice/api/bill?wbc_code=...` | implemented by `DeleteBillAsync` |
+| `getPaymentStatus` | `GET /einvoice/api/paymentStatus?wbc_code=...` | implemented by `GetPaymentStatusAsync` |
+| `getBillByReference` | `GET /einvoice/api/bill?bill_reference=...` | implemented by `GetBillByReferenceAsync` |
+| `getBillByPaymentCode` | `GET /einvoice/api/bill?wbc_code=...` | implemented by `GetBillByPaymentCodeAsync` |
+| `getPayments` | `GET /einvoice/api/payments?last_timestamp=...&limit=...` | implemented by `GetPaymentsAsync` |
+| `getBills` | `GET /einvoice/api/bills?payment_status=...&last_timestamp=...&limit=...` | implemented by `GetBillsAsync` |
+| `getStat` | `GET /merchant/stat?date_from=...&date_to=...` | implemented by `GetStatAsync` |
 
 The preferred base URL should match PHP:
 
@@ -172,6 +172,7 @@ the last processed `BillResponse.updateTimeStamp` and pass it as
 Example behavior:
 
 ```csharp
+var lastTimeStamp = "20251231"; // Date-only cursor; use "20251231235959" when time precision is needed.
 var res = await client.GetBillsAsync(-1, lastTimeStamp, 100);
 
 foreach (var bill in res.res)
@@ -257,7 +258,7 @@ Update examples and README to match PHP `2.1.0`:
 - add bill lookup/list examples
 - add bulk payment polling example
 - add stats example
-- add webhook receiver guidance or an ASP.NET Core webhook sample
+- add webhook receiver guidance
 - document cursor handling with `updateTimeStamp`
 
 ## NuGet Release Prep
@@ -319,10 +320,12 @@ Public GitHub Release style:
 | DOTNET-SDK-011 | done | Add `GetStatAsync` and `Stat` response DTO. |
 | DOTNET-SDK-012 | done | Add fast tests for query construction, deserialization, merchant ID setting, and invalid credentials. |
 | DOTNET-SDK-013 | done | Add live TestEnv smoke tests using `WEBIRR_TEST_ENV_MERCHANT_ID` and `WEBIRR_TEST_ENV_API_KEY`. |
-| DOTNET-SDK-014 | done | Update examples and README to match PHP 2.1.1 coverage. |
+| DOTNET-SDK-014 | done | Update examples and README to match PHP 2.1.2 coverage. |
 | DOTNET-SDK-015 | done | Modernize test/example target frameworks or release-machine runtime so tests run reliably. |
 | DOTNET-SDK-016 | done | Prepare NuGet release metadata, package README handling, and brief release notes. |
 | DOTNET-SDK-017 | todo | Verify NuGet credentials privately from the approved restricted source before publish. |
+| DOTNET-SDK-018 | done | Add endpoint-level .NET tests for every PHP client endpoint. |
+| DOTNET-SDK-019 | done | Add seven compiled .NET example workflows matching the PHP SDK examples. |
 
 ## Implementation Decisions
 
@@ -331,6 +334,7 @@ Public GitHub Release style:
    the preferred constructor with merchant ID.
 2. The library stays on `netstandard2.0`; tests and examples target `net10.0`
    so they run on the current local release machine.
-3. ASP.NET Core webhook sample work remains a separate follow-up.
+3. Webhook guidance is covered by a compiled framework-neutral webhook handler
+   example; a full ASP.NET Core host sample can be a later app-specific follow-up.
 4. NuGet publish is intentionally not done yet; it should be completed together
    after confirming the NuGet API key/account path.
