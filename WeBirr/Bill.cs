@@ -7,7 +7,7 @@ namespace WeBirr
     {
         public string customerCode { get; set; }
         public string customerName { get; set; }
-        public String customerPhone { get; set; }
+        public string customerPhone { get; set; } = "";
         public string billReference { get; set; }
         public string time { get; set; }
         public string description { get; set; }
