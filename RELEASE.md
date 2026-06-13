@@ -122,7 +122,7 @@ Use the existing local git identity. Do not override `git config user.name` or
 
 ```bash
 git status --short
-git add README.md RELEASE.md DOTNET_SDK_ENHANCEMENT_PLAN.md WeBirr WeBirr.Test WeBirr.Example
+git add README.md RELEASE.md WeBirr WeBirr.Test WeBirr.Example
 git commit -m "Enhance dotnet SDK bill and payment APIs"
 git tag v1.1.0
 git push origin main
