@@ -30,13 +30,17 @@ namespace WeBirr
         }
 
         public WeBirrClient(string merchantId, string apiKey, bool isTestEnv)
+            : this(merchantId, apiKey, isTestEnv, new HttpClient())
+        {
+        }
+
+        public WeBirrClient(string merchantId, string apiKey, bool isTestEnv, HttpClient httpClient)
         {
             _merchantId = merchantId ?? "";
             _apiKey = apiKey ?? "";
             _baseAddress = isTestEnv ? "https://api.webirr.net" : "https://api.webirr.net:8080";
-            _client = new HttpClient();
-            _client.DefaultRequestHeaders.Accept.Clear();
-            _client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            _client = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+            EnsureJsonAcceptHeader(_client);
         }
 
         /// <summary>
@@ -217,6 +221,15 @@ namespace WeBirr
             return string.IsNullOrEmpty(_merchantId)
                 ? new ApiResponse<T> { error = "merchant_id is required. Use WeBirrClient(string merchantId, string apiKey, bool isTestEnv)." }
                 : null;
+        }
+
+        static void EnsureJsonAcceptHeader(HttpClient client)
+        {
+            if (!client.DefaultRequestHeaders.Accept.Any(header =>
+                string.Equals(header.MediaType, "application/json", StringComparison.OrdinalIgnoreCase)))
+            {
+                client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            }
         }
     }
 }
