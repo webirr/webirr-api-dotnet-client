@@ -60,6 +60,8 @@ the preferred constructor path.
 5. Existing users who still set `Bill.merchantID` should continue to work.
 6. Do not remove legacy public method names or change existing return types.
 7. New methods may require the preferred constructor with merchant ID.
+8. Future approved breaking major release: remove constructors that do not
+   accept merchant ID so all SDK calls can be merchant-scoped by design.
 
 ## Model Plan
 
@@ -80,7 +82,9 @@ Keep `Bill` as the create/update request model:
 - `extras`
 
 The SDK should set `bill.merchantID` from the client merchant ID before sending
-create/update requests when the client was created with merchant ID.
+create/update requests when the client was created with a non-empty merchant
+ID. If the client merchant ID is empty or null, do not overwrite an existing
+bill `merchantID` value with empty/null.
 
 ### Response Model
 
@@ -133,7 +137,8 @@ Add a stats response model for `GetStatAsync`:
 2. Keep old constructor and add preferred constructor.
 3. Add a shared query builder that URL-encodes:
    - `api_key`
-   - `merchant_id` when available or required
+   - `merchant_id` for every SDK-supported endpoint when the client merchant ID
+     is non-empty
    - endpoint-specific parameters
 4. Add a shared response decoder to avoid repeated JSON handling.
 5. Prefer a single reusable `HttpClient` per `WeBirrClient` instance instead of
@@ -141,10 +146,13 @@ Add a stats response model for `GetStatAsync`:
 6. Defer framework-native factory integration (`IHttpClientFactory`) to a later
    larger design unless we can add it without breaking constructor behavior.
 7. For create/update:
-   - if `_merchantId` is set, assign `bill.merchantID = _merchantId`
+   - if `_merchantId` is non-empty, assign `bill.merchantID = _merchantId`
+   - if `_merchantId` is empty/null, leave any existing `bill.merchantID`
+     unchanged
    - call canonical `/einvoice/api/bill`
 8. For existing delete/status methods:
-   - use canonical routes when `_merchantId` is available
+   - use canonical routes and include `merchant_id` when `_merchantId` is
+     non-empty
    - preserve legacy behavior if needed for old constructor compatibility
 9. For new methods, require `_merchantId` and return an `ApiResponse` error if
    it is missing.
@@ -335,6 +343,9 @@ Public GitHub Release style:
 | DOTNET-SDK-017 | done | Replace long-lived NuGet API key publishing with GitHub Actions Trusted Publishing. |
 | DOTNET-SDK-018 | done | Add endpoint-level .NET tests for every PHP client endpoint. |
 | DOTNET-SDK-019 | done | Add seven compiled .NET example workflows matching the PHP SDK examples. |
+| DOTNET-SDK-020 | todo | Add injected `HttpClient` constructor support for efficient batch/mass bill generation while preserving existing constructors. |
+| DOTNET-SDK-021 | todo | Strengthen tests proving all nine endpoint calls include query `merchant_id` when configured and omit it when empty. |
+| DOTNET-SDK-022 | todo | Future approved breaking major release: remove constructors that do not accept merchant ID. |
 
 ## Implementation Decisions
 
