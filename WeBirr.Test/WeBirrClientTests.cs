@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using Newtonsoft.Json;
 using NUnit.Framework;
 using WeBirr;
 
@@ -18,6 +18,10 @@ namespace WeBirr.Test
         const string UpdatedCustomerName = "SDK Test Customer Updated";
         const string CustomerPhone = "0911000000";
         const string Description = "SDK Test Bill";
+        static readonly JsonSerializerOptions JsonOptions = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        };
 
         [Test]
         public async Task CreateBill_should_get_error_from_WebService_on_invalid_api_key_TestEnv()
@@ -117,7 +121,7 @@ namespace WeBirr.Test
                 }
             }";
 
-            var response = JsonConvert.DeserializeObject<ApiResponse<BillResponse>>(json);
+            var response = JsonSerializer.Deserialize<ApiResponse<BillResponse>>(json, JsonOptions);
 
             AssertNoApiError(response);
             Assert.That(response.res.customerPhone, Is.EqualTo(CustomerPhone));
@@ -147,7 +151,7 @@ namespace WeBirr.Test
                 }]
             }";
 
-            var response = JsonConvert.DeserializeObject<ApiResponse<List<PaymentResponse>>>(json);
+            var response = JsonSerializer.Deserialize<ApiResponse<List<PaymentResponse>>>(json, JsonOptions);
             var payment = response.res.Single();
 
             Assert.That(payment.paymentDate, Is.EqualTo("2026-06-12 10:11:12"));
@@ -180,7 +184,7 @@ namespace WeBirr.Test
                 }
             }";
 
-            var response = JsonConvert.DeserializeObject<ApiResponse<Payment>>(json);
+            var response = JsonSerializer.Deserialize<ApiResponse<Payment>>(json, JsonOptions);
 
             Assert.That(response.res.data.paymentDate, Is.EqualTo("2026-06-12 10:11:12"));
 #pragma warning disable CS0618
@@ -204,7 +208,7 @@ namespace WeBirr.Test
                 }
             }";
 
-            var response = JsonConvert.DeserializeObject<ApiResponse<Stat>>(json);
+            var response = JsonSerializer.Deserialize<ApiResponse<Stat>>(json, JsonOptions);
 
             Assert.That(response.res.nBills, Is.EqualTo(10));
             Assert.That(response.res.nBillsPaid, Is.EqualTo(4));
