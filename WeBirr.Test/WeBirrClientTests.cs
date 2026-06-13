@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -9,6 +10,7 @@ using WeBirr;
 
 namespace WeBirr.Test
 {
+    [NonParallelizable]
     public class WeBirrClientTests
     {
         const string CreatedAmount = "270.90";
@@ -18,10 +20,30 @@ namespace WeBirr.Test
         const string UpdatedCustomerName = "SDK Test Customer Updated";
         const string CustomerPhone = "0911000000";
         const string Description = "SDK Test Bill";
+        const string ExampleCursor = "20251231";
+
         static readonly JsonSerializerOptions JsonOptions = new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true
         };
+
+        static WeBirrClient _testEnvApi;
+        static string _testEnvMerchantId;
+        static string _testEnvPaymentCode;
+        static string _testEnvBillReference;
+        static string _testEnvBillUpdateTimeStamp;
+        static bool _testEnvBillCreated;
+        static bool _testEnvBillUpdated;
+        static bool _testEnvDeleted;
+
+        [OneTimeTearDown]
+        public async Task CleanupTestEnvBill()
+        {
+            if (_testEnvApi != null && !_testEnvDeleted && !string.IsNullOrEmpty(_testEnvPaymentCode))
+            {
+                await _testEnvApi.DeleteBillAsync(_testEnvPaymentCode);
+            }
+        }
 
         [Test]
         public async Task CreateBill_should_get_error_from_WebService_on_invalid_api_key_TestEnv()
@@ -60,6 +82,7 @@ namespace WeBirr.Test
         public async Task DeleteBill_should_get_error_from_WebService_on_invalid_api_key()
         {
             var api = new WeBirrClient("x", true);
+
             var res = await api.DeleteBillAsync("xxxx");
 
             AssertApiError(res);
@@ -69,7 +92,58 @@ namespace WeBirr.Test
         public async Task GetPaymentStatus_should_get_error_from_WebService_on_invalid_api_key()
         {
             var api = new WeBirrClient("x", true);
+
             var res = await api.GetPaymentStatusAsync("xxxx");
+
+            AssertApiError(res);
+        }
+
+        [Test]
+        public async Task GetBillByReference_should_get_error_from_WebService_on_invalid_api_key()
+        {
+            var api = new WeBirrClient("x", "x", true);
+
+            var res = await api.GetBillByReferenceAsync("missing-reference");
+
+            AssertApiError(res);
+        }
+
+        [Test]
+        public async Task GetBillByPaymentCode_should_get_error_from_WebService_on_invalid_api_key()
+        {
+            var api = new WeBirrClient("x", "x", true);
+
+            var res = await api.GetBillByPaymentCodeAsync("xxxx");
+
+            AssertApiError(res);
+        }
+
+        [Test]
+        public async Task GetBills_should_get_error_from_WebService_on_invalid_api_key()
+        {
+            var api = new WeBirrClient("x", "x", true);
+
+            var res = await api.GetBillsAsync(-1, ExampleCursor, 10);
+
+            AssertApiError(res);
+        }
+
+        [Test]
+        public async Task GetPayments_should_get_error_from_WebService_on_invalid_api_key()
+        {
+            var api = new WeBirrClient("x", "x", true);
+
+            var res = await api.GetPaymentsAsync(ExampleCursor, 10);
+
+            AssertApiError(res);
+        }
+
+        [Test]
+        public async Task GetStat_should_get_error_from_WebService_on_invalid_api_key()
+        {
+            var api = new WeBirrClient("x", "x", true);
+
+            var res = await api.GetStatAsync("2025-01-01", "2025-01-02");
 
             AssertApiError(res);
         }
@@ -99,6 +173,47 @@ namespace WeBirr.Test
             AssertApiError(bills);
             AssertApiError(payments);
             AssertApiError(stat);
+        }
+
+        [Test]
+        public void Bill_serializes_customer_phone()
+        {
+            var bill = SampleBill("dotnet/unit/" + Guid.NewGuid());
+            var element = SerializeBill(bill);
+
+            Assert.That(element.GetProperty("customerPhone").GetString(), Is.EqualTo(CustomerPhone));
+        }
+
+        [Test]
+        public void Bill_serializes_without_customer_phone_as_empty_string()
+        {
+            var bill = SampleBillWithoutCustomerPhone("dotnet/unit/" + Guid.NewGuid());
+            var element = SerializeBill(bill);
+
+            Assert.That(element.GetProperty("customerPhone").GetString(), Is.EqualTo(""));
+        }
+
+        [Test]
+        public void Bill_serializes_empty_extras_as_json_object()
+        {
+            var bill = SampleBill("dotnet/unit/" + Guid.NewGuid());
+            var element = SerializeBill(bill);
+            var extras = element.GetProperty("extras");
+
+            Assert.That(extras.ValueKind, Is.EqualTo(JsonValueKind.Object));
+            Assert.That(extras.EnumerateObject().Any(), Is.False);
+        }
+
+        [Test]
+        public void Bill_serializes_populated_extras_as_json_object()
+        {
+            var bill = SampleBill("dotnet/unit/" + Guid.NewGuid());
+            bill.extras = new Dictionary<string, string> { { "source", "unit-test" } };
+            var element = SerializeBill(bill);
+            var extras = element.GetProperty("extras");
+
+            Assert.That(extras.ValueKind, Is.EqualTo(JsonValueKind.Object));
+            Assert.That(extras.GetProperty("source").GetString(), Is.EqualTo("unit-test"));
         }
 
         [Test]
@@ -220,7 +335,122 @@ namespace WeBirr.Test
 
         [Test]
         [Category("TestEnv")]
-        public async Task TestEnv_smoke_covers_bill_and_payment_endpoints()
+        [Order(1)]
+        public async Task TestEnv_CreateBill_without_manual_merchant_id()
+        {
+            await EnsureTestEnvBillCreatedAsync();
+
+            Assert.That(_testEnvPaymentCode, Is.Not.Empty);
+            Assert.That(_testEnvPaymentCode, Does.Match(@"^\d{3}\s\d{3}\s\d{3}$"));
+        }
+
+        [Test]
+        [Category("TestEnv")]
+        [Order(2)]
+        public async Task TestEnv_UpdateBill_without_manual_merchant_id()
+        {
+            await EnsureTestEnvBillUpdatedAsync();
+
+            Assert.That(_testEnvBillUpdated, Is.True);
+        }
+
+        [Test]
+        [Category("TestEnv")]
+        [Order(3)]
+        public async Task TestEnv_GetPaymentStatus_returns_pending_for_new_bill()
+        {
+            await EnsureTestEnvBillCreatedAsync();
+
+            var status = await TestEnvApi().GetPaymentStatusAsync(_testEnvPaymentCode);
+
+            AssertNoApiError(status);
+            Assert.That(status.res.status, Is.EqualTo(0));
+            Assert.That(status.res.data, Is.Null);
+        }
+
+        [Test]
+        [Category("TestEnv")]
+        [Order(4)]
+        public async Task TestEnv_GetBillByReference_returns_created_bill()
+        {
+            await EnsureTestEnvBillUpdatedAsync();
+
+            var byReference = await TestEnvApi().GetBillByReferenceAsync(_testEnvBillReference);
+
+            AssertNoApiError(byReference);
+            AssertBillMatchesExpected(byReference.res, _testEnvMerchantId, _testEnvBillReference, _testEnvPaymentCode);
+            _testEnvBillUpdateTimeStamp = byReference.res.updateTimeStamp;
+        }
+
+        [Test]
+        [Category("TestEnv")]
+        [Order(5)]
+        public async Task TestEnv_GetBillByPaymentCode_returns_created_bill()
+        {
+            await EnsureTestEnvBillUpdatedAsync();
+
+            var byPaymentCode = await TestEnvApi().GetBillByPaymentCodeAsync(_testEnvPaymentCode);
+
+            AssertNoApiError(byPaymentCode);
+            AssertBillMatchesExpected(byPaymentCode.res, _testEnvMerchantId, _testEnvBillReference, _testEnvPaymentCode);
+        }
+
+        [Test]
+        [Category("TestEnv")]
+        [Order(6)]
+        public async Task TestEnv_GetBills_finds_created_bill()
+        {
+            await EnsureTestEnvBillLoadedAsync();
+
+            var cursor = CursorBefore(_testEnvBillUpdateTimeStamp);
+            var bills = await TestEnvApi().GetBillsAsync(0, cursor, 100);
+
+            AssertNoApiError(bills);
+            Assert.That(bills.res, Is.Not.Null);
+            var listedBill = bills.res.FirstOrDefault(b => b.billReference == _testEnvBillReference);
+            Assert.That(listedBill, Is.Not.Null);
+            AssertBillMatchesExpected(listedBill, _testEnvMerchantId, _testEnvBillReference, _testEnvPaymentCode);
+        }
+
+        [Test]
+        [Category("TestEnv")]
+        [Order(7)]
+        public async Task TestEnv_GetPayments_returns_payment_array()
+        {
+            var payments = await TestEnvApi().GetPaymentsAsync(ExampleCursor, 10);
+
+            AssertNoApiError(payments);
+            Assert.That(payments.res, Is.Not.Null);
+        }
+
+        [Test]
+        [Category("TestEnv")]
+        [Order(8)]
+        public async Task TestEnv_GetStat_returns_stat_object()
+        {
+            var stat = await TestEnvApi().GetStatAsync("2025-01-01", "2030-01-31");
+
+            AssertNoApiError(stat);
+            Assert.That(stat.res, Is.Not.Null);
+        }
+
+        [Test]
+        [Category("TestEnv")]
+        [Order(99)]
+        public async Task TestEnv_DeleteBill_removes_created_bill()
+        {
+            await EnsureTestEnvBillUpdatedAsync();
+
+            var delete = await TestEnvApi().DeleteBillAsync(_testEnvPaymentCode);
+            AssertNoApiError(delete);
+            Assert.That(delete.res.ToLowerInvariant(), Is.EqualTo("ok"));
+            _testEnvDeleted = true;
+
+            var deletedBill = await TestEnvApi().GetBillByReferenceAsync(_testEnvBillReference);
+            AssertApiError(deletedBill);
+        }
+
+        static WeBirrClient TestEnvApi()
         {
             var merchantId = Environment.GetEnvironmentVariable("WEBIRR_TEST_ENV_MERCHANT_ID") ?? "";
             var apiKey = Environment.GetEnvironmentVariable("WEBIRR_TEST_ENV_API_KEY") ?? "";
@@ -230,71 +460,56 @@ namespace WeBirr.Test
                 Assert.Ignore("WEBIRR_TEST_ENV_MERCHANT_ID and WEBIRR_TEST_ENV_API_KEY are required for TestEnv smoke tests.");
             }
 
-            var api = new WeBirrClient(merchantId, apiKey, true);
-            var billReference = "dotnet/test/" + Guid.NewGuid();
-            string paymentCode = null;
-
-            try
+            if (_testEnvApi == null)
             {
-                var createBill = SampleBill(billReference);
-                var create = await api.CreateBillAsync(createBill);
-                AssertNoApiError(create);
-                Assert.That(createBill.merchantID, Is.EqualTo(merchantId));
-                paymentCode = create.res;
-                Assert.That(paymentCode, Is.Not.Empty);
-                Assert.That(paymentCode, Does.Match(@"^\d{3}\s\d{3}\s\d{3}$"));
-
-                var updateBill = SampleBill(billReference);
-                updateBill.amount = UpdatedAmount;
-                updateBill.customerName = UpdatedCustomerName;
-                var update = await api.UpdateBillAsync(updateBill);
-                AssertNoApiError(update);
-                Assert.That(update.res.ToLowerInvariant(), Is.EqualTo("ok"));
-
-                var status = await api.GetPaymentStatusAsync(paymentCode);
-                AssertNoApiError(status);
-                Assert.That(status.res.status, Is.EqualTo(0));
-                Assert.That(status.res.data, Is.Null);
-
-                var byReference = await api.GetBillByReferenceAsync(billReference);
-                AssertNoApiError(byReference);
-                AssertBillMatchesExpected(byReference.res, merchantId, billReference, paymentCode);
-
-                var byPaymentCode = await api.GetBillByPaymentCodeAsync(paymentCode);
-                AssertNoApiError(byPaymentCode);
-                AssertBillMatchesExpected(byPaymentCode.res, merchantId, billReference, paymentCode);
-
-                var cursor = CursorBefore(byReference.res.updateTimeStamp);
-                var bills = await api.GetBillsAsync(0, cursor, 100);
-                AssertNoApiError(bills);
-                Assert.That(bills.res, Is.Not.Null);
-                var listedBill = bills.res.FirstOrDefault(b => b.billReference == billReference);
-                Assert.That(listedBill, Is.Not.Null);
-                AssertBillMatchesExpected(listedBill, merchantId, billReference, paymentCode);
-
-                var payments = await api.GetPaymentsAsync("", 10);
-                AssertNoApiError(payments);
-                Assert.That(payments.res, Is.Not.Null);
-
-                var stat = await api.GetStatAsync("2025-01-01", "2030-01-31");
-                AssertNoApiError(stat);
-                Assert.That(stat.res, Is.Not.Null);
-
-                var delete = await api.DeleteBillAsync(paymentCode);
-                AssertNoApiError(delete);
-                Assert.That(delete.res.ToLowerInvariant(), Is.EqualTo("ok"));
-                paymentCode = null;
-
-                var deletedBill = await api.GetBillByReferenceAsync(billReference);
-                AssertApiError(deletedBill);
+                _testEnvMerchantId = merchantId;
+                _testEnvBillReference = "dotnet/test/" + Guid.NewGuid();
+                _testEnvApi = new WeBirrClient(merchantId, apiKey, true);
             }
-            finally
-            {
-                if (!string.IsNullOrEmpty(paymentCode))
-                {
-                    await api.DeleteBillAsync(paymentCode);
-                }
-            }
+
+            return _testEnvApi;
+        }
+
+        static async Task EnsureTestEnvBillCreatedAsync()
+        {
+            if (_testEnvBillCreated) return;
+
+            var api = TestEnvApi();
+            var createBill = SampleBill(_testEnvBillReference);
+            var create = await api.CreateBillAsync(createBill);
+
+            AssertNoApiError(create);
+            Assert.That(createBill.merchantID, Is.EqualTo(_testEnvMerchantId));
+            _testEnvPaymentCode = create.res;
+            _testEnvBillCreated = true;
+        }
+
+        static async Task EnsureTestEnvBillUpdatedAsync()
+        {
+            await EnsureTestEnvBillCreatedAsync();
+            if (_testEnvBillUpdated) return;
+
+            var updateBill = SampleBill(_testEnvBillReference);
+            updateBill.amount = UpdatedAmount;
+            updateBill.customerName = UpdatedCustomerName;
+            var update = await TestEnvApi().UpdateBillAsync(updateBill);
+
+            AssertNoApiError(update);
+            Assert.That(updateBill.merchantID, Is.EqualTo(_testEnvMerchantId));
+            Assert.That(update.res.ToLowerInvariant(), Is.EqualTo("ok"));
+            _testEnvBillUpdated = true;
+        }
+
+        static async Task EnsureTestEnvBillLoadedAsync()
+        {
+            if (!string.IsNullOrEmpty(_testEnvBillUpdateTimeStamp)) return;
+
+            await EnsureTestEnvBillUpdatedAsync();
+            var byReference = await TestEnvApi().GetBillByReferenceAsync(_testEnvBillReference);
+
+            AssertNoApiError(byReference);
+            AssertBillMatchesExpected(byReference.res, _testEnvMerchantId, _testEnvBillReference, _testEnvPaymentCode);
+            _testEnvBillUpdateTimeStamp = byReference.res.updateTimeStamp;
         }
 
         static Bill SampleBill(string billReference) => new Bill
@@ -309,6 +524,25 @@ namespace WeBirr.Test
             merchantID = "x",
             extras = new Dictionary<string, string>()
         };
+
+        static Bill SampleBillWithoutCustomerPhone(string billReference) => new Bill
+        {
+            amount = CreatedAmount,
+            customerCode = CustomerCode,
+            customerName = CreatedCustomerName,
+            time = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm"),
+            description = Description,
+            billReference = billReference,
+            extras = new Dictionary<string, string>()
+        };
+
+        static JsonElement SerializeBill(Bill bill)
+        {
+            using (var doc = JsonDocument.Parse(JsonSerializer.Serialize(bill, JsonOptions)))
+            {
+                return doc.RootElement.Clone();
+            }
+        }
 
         static void AssertNoApiError<T>(ApiResponse<T> res) where T : class
         {
@@ -342,7 +576,7 @@ namespace WeBirr.Test
         static string CursorBefore(string updateTimeStamp)
         {
             var baseValue = (updateTimeStamp ?? "").Length >= 14 ? updateTimeStamp.Substring(0, 14) : "";
-            if (!DateTime.TryParseExact(baseValue, "yyyyMMddHHmmss", null, System.Globalization.DateTimeStyles.AssumeUniversal, out var date))
+            if (!DateTime.TryParseExact(baseValue, "yyyyMMddHHmmss", null, DateTimeStyles.AssumeUniversal, out var date))
             {
                 return "";
             }
