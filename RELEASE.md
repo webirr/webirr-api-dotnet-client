@@ -2,6 +2,94 @@
 
 This repo publishes the NuGet package `WeBirr`.
 
+## Future Release Workflow
+
+.NET SDK releases publish to NuGet through GitHub Actions Trusted Publishing.
+Do not use long-lived NuGet API keys for normal releases.
+
+One-time configuration:
+
+- NuGet Trusted Publishing policy exists for package owner `WeBirr`.
+- Policy values:
+  - Repository owner: `webirr`
+  - Repository: `webirr-api-dotnet-client`
+  - Workflow file: `publish-nuget.yml`
+  - Environment: leave empty
+- GitHub repository variable `NUGET_USER` is set to `eliash`.
+
+For each future release:
+
+1. Choose the next backward-compatible version, for example `1.1.1` or `1.2.0`.
+2. Update `WeBirr/WeBirr.csproj`:
+   - `<Version>` to the new version
+   - `<PackageReleaseNotes>` to a brief note, matching prior release style
+3. Update release docs or notes only when the release process or public package
+   behavior changed.
+4. Run release checks:
+
+```bash
+dotnet restore WeBirr.sln
+dotnet list WeBirr.sln package --vulnerable --include-transitive
+dotnet test WeBirr.sln
+WEBIRR_TEST_ENV_MERCHANT_ID="$WEBIRR_TEST_ENV_MERCHANT_ID" \
+WEBIRR_TEST_ENV_API_KEY="$WEBIRR_TEST_ENV_API_KEY" \
+dotnet test WeBirr.sln --filter TestEnv
+dotnet build WeBirr/WeBirr.csproj -c Release
+dotnet pack WeBirr/WeBirr.csproj -c Release --no-build
+```
+
+5. Commit the release prep with the existing local git identity.
+6. Create and push a version tag:
+
+```bash
+git tag vNEW_VERSION
+git push origin main
+git push origin vNEW_VERSION
+```
+
+Pushing the `v*` tag starts `.github/workflows/publish-nuget.yml`. That workflow
+restores, tests, packs, uses NuGet Trusted Publishing to get a short-lived token,
+and publishes the package to nuget.org.
+
+If a tag was created before the workflow existed, or if you need to rerun a
+release manually, use:
+
+```bash
+gh workflow run publish-nuget.yml \
+  --repo webirr/webirr-api-dotnet-client \
+  -f version=NEW_VERSION \
+  -f nuget_user=eliash
+```
+
+7. Create a brief GitHub release:
+
+```bash
+gh release create vNEW_VERSION \
+  --repo webirr/webirr-api-dotnet-client \
+  --title "NEW_VERSION" \
+  --notes "brief note" \
+  --verify-tag
+```
+
+8. Verify NuGet installation from a clean project:
+
+```bash
+tmpdir="$(mktemp -d)"
+cd "$tmpdir"
+dotnet new console -n webirr-release-check
+cd webirr-release-check
+dotnet add package WeBirr --version NEW_VERSION
+dotnet list package
+printf '%s\n' 'using WeBirr; Console.WriteLine(typeof(WeBirrClient).FullName);' > Program.cs
+dotnet run
+```
+
+Expected result: the requested `WeBirr` version is installed and the program
+prints `WeBirr.WeBirrClient`.
+
+After the child repo release is complete, update the `webirr-hub` submodule
+pointer and push the hub.
+
 ## Release 1.1.0
 
 Current published NuGet version before this release: `1.0.3`.

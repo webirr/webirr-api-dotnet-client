@@ -299,7 +299,7 @@ Trusted Publishing:
 - NuGet trusted publisher environment: leave empty
 - manual workflow input `nuget_user`: NuGet.org username/profile name, not an
   email address
-- future tag workflow variable: repository variable `NUGET_USER`
+- future tag workflow variable: repository variable `NUGET_USER=eliash`
 
 Secrets handling:
 
@@ -348,3 +348,6 @@ Public GitHub Release style:
 4. NuGet publish is intentionally not done yet; it should be completed by
    running the `Publish NuGet` GitHub Actions workflow after creating the
    NuGet Trusted Publishing policy.
+5. Future .NET SDK releases should push `v*` tags after release-prep commits;
+   the `Publish NuGet` workflow publishes automatically using Trusted
+   Publishing and repository variable `NUGET_USER=eliash`.
