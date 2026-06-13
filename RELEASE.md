@@ -90,11 +90,11 @@ prints `WeBirr.WeBirrClient`.
 After the child repo release is complete, update the `webirr-hub` submodule
 pointer and push the hub.
 
-## Release 1.1.0
+## Release 1.2.0
 
-Current published NuGet version before this release: `1.0.3`.
+Current published NuGet version before this release: `1.1.0`.
 
-Planned release version: `1.1.0`.
+Planned release version: `1.2.0`.
 
 Package page: `https://www.nuget.org/packages/WeBirr`
 
@@ -123,10 +123,10 @@ Use the existing local git identity. Do not override `git config user.name` or
 ```bash
 git status --short
 git add README.md RELEASE.md WeBirr WeBirr.Test WeBirr.Example
-git commit -m "Enhance dotnet SDK bill and payment APIs"
-git tag v1.1.0
+git commit -m "Prepare dotnet SDK release 1.2.0"
+git tag v1.2.0
 git push origin main
-git push origin v1.1.0
+git push origin v1.2.0
 ```
 
 Do not move or reuse an existing published tag. If a released tag needs a fix,
@@ -134,13 +134,13 @@ make a new patch release tag.
 
 ## GitHub Release
 
-Create a GitHub Release from the pushed `v1.1.0` tag.
+Create a GitHub Release from the pushed `v1.2.0` tag.
 
 ```bash
-gh release create v1.1.0 \
+gh release create v1.2.0 \
   --repo webirr/webirr-api-dotnet-client \
-  --title "1.1.0" \
-  --notes "more api endpoints" \
+  --title "1.2.0" \
+  --notes "http client injection" \
   --verify-tag
 ```
 
@@ -160,7 +160,7 @@ Create a NuGet Trusted Publishing policy before running the workflow:
 For manual publishing of the current release, run GitHub Actions workflow
 `Publish NuGet` with:
 
-- version: `1.1.0`
+- version: `1.2.0`
 - nuget_user: the NuGet.org username/profile name for an active member of the
   `WeBirr` NuGet organization
 
@@ -170,7 +170,7 @@ same NuGet.org username/profile name, then push the release tag.
 ```bash
 gh workflow run publish-nuget.yml \
   --repo webirr/webirr-api-dotnet-client \
-  -f version=1.1.0 \
+  -f version=1.2.0 \
   -f nuget_user=YOUR_NUGET_USERNAME
 ```
 
@@ -182,8 +182,8 @@ After NuGet indexes the package:
 dotnet nuget list source
 dotnet new console -n webirr-release-check
 cd webirr-release-check
-dotnet add package WeBirr --version 1.1.0
+dotnet add package WeBirr --version 1.2.0
 dotnet list package
 ```
 
-Expected result: `WeBirr` installs at version `1.1.0`.
+Expected result: `WeBirr` installs at version `1.2.0`.

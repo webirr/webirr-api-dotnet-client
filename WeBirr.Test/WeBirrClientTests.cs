@@ -2,8 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Reflection;
+using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using WeBirr;
@@ -157,6 +163,72 @@ namespace WeBirr.Test
             await api.CreateBillAsync(bill);
 
             Assert.That(bill.merchantID, Is.EqualTo("merchant-from-client"));
+        }
+
+        [Test]
+        public async Task Constructor_can_use_injected_http_client_for_requests()
+        {
+            var handler = new StubHttpMessageHandler(@"{""error"":null,""res"":""OK""}");
+            var httpClient = new HttpClient(handler);
+            var api = new WeBirrClient("merchant-from-client", "x", true, httpClient);
+
+            var response = await api.DeleteBillAsync("123456789");
+
+            AssertNoApiError(response);
+            Assert.That(response.res, Is.EqualTo("OK"));
+            Assert.That(handler.Requests, Has.Count.EqualTo(1));
+            Assert.That(handler.Requests[0].RequestUri.ToString(), Does.Contain("merchant_id=merchant-from-client"));
+            Assert.That(handler.Requests[0].RequestUri.ToString(), Does.Contain("wbc_code=123456789"));
+        }
+
+        [Test]
+        public void Constructor_rejects_null_injected_http_client()
+        {
+            Assert.Throws<ArgumentNullException>(() => new WeBirrClient("merchant-from-client", "x", true, null));
+        }
+
+        [Test]
+        public void Constructor_preserves_injected_http_client_accept_headers()
+        {
+            var httpClient = new HttpClient(new StubHttpMessageHandler(@"{""error"":null,""res"":""OK""}"));
+            httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
+
+            _ = new WeBirrClient("merchant-from-client", "x", true, httpClient);
+
+            Assert.That(httpClient.DefaultRequestHeaders.Accept.Any(header => header.MediaType == "text/plain"), Is.True);
+            Assert.That(httpClient.DefaultRequestHeaders.Accept.Any(header => header.MediaType == "application/json"), Is.True);
+        }
+
+        [Test]
+        public void Legacy_constructor_does_not_overwrite_existing_bill_merchant_id_with_empty_client_merchant_id()
+        {
+            var bill = SampleBill("dotnet/unit/" + Guid.NewGuid());
+            bill.merchantID = "merchant-on-bill";
+            var api = new WeBirrClient("x", true);
+
+            InvokePrepareBill(api, bill);
+
+            Assert.That(bill.merchantID, Is.EqualTo("merchant-on-bill"));
+        }
+
+        [TestCaseSource(nameof(SdkEndpointQueryCases))]
+        public void Url_builder_includes_merchant_id_for_all_endpoint_parameter_shapes_when_configured(string endpoint, string path, Dictionary<string, string> parameters)
+        {
+            var api = new WeBirrClient("merchant-from-client", "x", true);
+
+            var url = BuildUrl(api, path, parameters);
+
+            Assert.That(url, Does.Contain("merchant_id=merchant-from-client"), endpoint);
+        }
+
+        [TestCaseSource(nameof(SdkEndpointQueryCases))]
+        public void Url_builder_omits_merchant_id_for_all_endpoint_parameter_shapes_when_client_merchant_id_is_empty(string endpoint, string path, Dictionary<string, string> parameters)
+        {
+            var api = new WeBirrClient("x", true);
+
+            var url = BuildUrl(api, path, parameters);
+
+            Assert.That(url, Does.Not.Contain("merchant_id="), endpoint);
         }
 
         [Test]
@@ -572,6 +644,52 @@ namespace WeBirr.Test
         }
 
         static string NormalizePaymentCode(string paymentCode) => Regex.Replace(paymentCode ?? "", @"\D+", "");
+
+        static IEnumerable<object[]> SdkEndpointQueryCases()
+        {
+            yield return new object[] { "CreateBillAsync", "einvoice/api/bill", null };
+            yield return new object[] { "UpdateBillAsync", "einvoice/api/bill", null };
+            yield return new object[] { "DeleteBillAsync", "einvoice/api/bill", new Dictionary<string, string> { { "wbc_code", "123 456 789" } } };
+            yield return new object[] { "GetPaymentStatusAsync", "einvoice/api/paymentStatus", new Dictionary<string, string> { { "wbc_code", "123 456 789" } } };
+            yield return new object[] { "GetBillByReferenceAsync", "einvoice/api/bill", new Dictionary<string, string> { { "bill_reference", "dotnet/unit/1" } } };
+            yield return new object[] { "GetBillByPaymentCodeAsync", "einvoice/api/bill", new Dictionary<string, string> { { "wbc_code", "123 456 789" } } };
+            yield return new object[] { "GetBillsAsync", "einvoice/api/bills", new Dictionary<string, string> { { "payment_status", "-1" }, { "last_timestamp", "20251231" }, { "limit", "10" } } };
+            yield return new object[] { "GetPaymentsAsync", "einvoice/api/payments", new Dictionary<string, string> { { "last_timestamp", "20251231" }, { "limit", "10" } } };
+            yield return new object[] { "GetStatAsync", "merchant/stat", new Dictionary<string, string> { { "date_from", "2025-01-01" }, { "date_to", "2025-01-02" } } };
+        }
+
+        static string BuildUrl(WeBirrClient api, string path, Dictionary<string, string> parameters)
+        {
+            var method = typeof(WeBirrClient).GetMethod("BuildUrl", BindingFlags.Instance | BindingFlags.NonPublic);
+            return (string)method.Invoke(api, new object[] { path, parameters });
+        }
+
+        static void InvokePrepareBill(WeBirrClient api, Bill bill)
+        {
+            var method = typeof(WeBirrClient).GetMethod("PrepareBill", BindingFlags.Instance | BindingFlags.NonPublic);
+            method.Invoke(api, new object[] { bill });
+        }
+
+        sealed class StubHttpMessageHandler : HttpMessageHandler
+        {
+            readonly string _responseBody;
+
+            public StubHttpMessageHandler(string responseBody)
+            {
+                _responseBody = responseBody;
+            }
+
+            public List<HttpRequestMessage> Requests { get; } = new List<HttpRequestMessage>();
+
+            protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            {
+                Requests.Add(request);
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(_responseBody, Encoding.UTF8, "application/json")
+                });
+            }
+        }
 
         static string CursorBefore(string updateTimeStamp)
         {

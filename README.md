@@ -578,3 +578,12 @@ var api = new WeBirrClient(apiKey, isTestEnv: true);
 ```
 
 For new merchant-scoped methods such as bill lookup, bill listing, payment bulk polling, and stats, use the preferred constructor with merchant ID.
+
+For batch or mass bill workloads, you can pass a caller-owned `HttpClient` so
+your application can use `IHttpClientFactory`, shared handlers, retry policies,
+and normal connection reuse:
+
+```csharp
+var httpClient = httpClientFactory.CreateClient("WeBirr");
+var api = new WeBirrClient(merchantId, apiKey, isTestEnv: true, httpClient);
+```
