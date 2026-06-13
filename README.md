@@ -36,6 +36,10 @@ Create the client with merchant ID, API key, and environment once. The client au
 
 ## Example
 
+The examples below keep the original .NET README flow: create the client, call the API, check `error`, handle the success branch, and print `errorCode` on failure.
+
+### Creating a new Bill / Updating an existing Bill on WeBirr Servers
+
 ```C#
 using System;
 using System.Collections.Generic;
@@ -51,16 +55,6 @@ namespace WeBirr.Example
 
         //static readonly string apiKey = "YOUR_API_KEY";
         //static readonly string merchantId = "YOUR_MERCHANT_ID";
-
-        static async Task Main(string[] args)
-        {
-            await CreateAndUpdateBillAsync();
-            await GetBillAndListBillsAsync();
-            await GetPaymentStatusAsync();
-            await GetPaymentsAsync();
-            await GetStatAsync();
-            await DeleteBillAsync();
-        }
 
         /// Creating a new Bill / Updating an existing Bill on WeBirr Servers
         public static async Task CreateAndUpdateBillAsync()
@@ -123,6 +117,25 @@ namespace WeBirr.Example
             }
 
         }
+    }
+}
+
+```
+
+### Getting a Bill and Listing Bills
+
+```C#
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using WeBirr;
+
+namespace WeBirr.Example
+{
+    class Program
+    {
+        static readonly string apiKey = Environment.GetEnvironmentVariable("WEBIRR_TEST_ENV_API_KEY") ?? "";
+        static readonly string merchantId = Environment.GetEnvironmentVariable("WEBIRR_TEST_ENV_MERCHANT_ID") ?? "";
 
         /// Getting a Bill and Listing Bills from WeBirr Servers
         public static async Task GetBillAndListBillsAsync()
@@ -193,30 +206,26 @@ namespace WeBirr.Example
                 Console.WriteLine($"errorCode: {bills.errorCode}");
             }
         }
+    }
+}
 
-        /// Deleting an existing Bill from WeBirr Servers (if it is not paid)
-        public static async Task DeleteBillAsync()
-        {
-            var api = new WeBirrClient(merchantId, apiKey, isTestEnv: true);
+```
 
-            var paymentCode = "PAYMENT_CODE_YOU_SAVED_AFTER_CREATING_A_NEW_BILL"; // suchas as '141 263 782';
+Timestamp cursors can be date-only (`yyyyMMdd`) or include time (`yyyyMMddHHmmss`). Use empty string only when you intentionally want all history from the beginning.
 
-            Console.WriteLine("Deleting Bill...");
-            var res = await api.DeleteBillAsync(paymentCode);
+### Getting Payment status of an existing Bill from WeBirr Servers
 
-            if (res.error == null)
-            {
-                // success
-                Console.WriteLine("bill is deleted successfully"); //res.res will be 'OK'  no need to check here!
-            }
-            else
-            {
-                // fail
-                Console.WriteLine($"error: {res.error}");
-                Console.WriteLine($"errorCode: {res.errorCode}"); // can be used to handle specific busines error such as ERROR_INVLAID_INPUT
-            }
+```C#
+using System;
+using System.Threading.Tasks;
+using WeBirr;
 
-        }
+namespace WeBirr.Example
+{
+    class Program
+    {
+        static readonly string apiKey = Environment.GetEnvironmentVariable("WEBIRR_TEST_ENV_API_KEY") ?? "";
+        static readonly string merchantId = Environment.GetEnvironmentVariable("WEBIRR_TEST_ENV_MERCHANT_ID") ?? "";
 
         /// Getting Payment status of an existing Bill from WeBirr Servers
         public static async Task GetPaymentStatusAsync()
@@ -251,6 +260,88 @@ namespace WeBirr.Example
             }
 
         }
+    }
+}
+
+```
+
+*Sample object returned from getPaymentStatus()*
+
+```C#
+var sample = new Payment
+{
+    status = 2, // 0. Pending, 1. Payment in Progress, 2. Paid
+    data = new PaymentDetail
+    {
+        status = 2,
+        bankID = "test-bank",
+        paymentReference = "TX-1",
+        amount = "278.00",
+        paymentDate = "2026-06-12 10:11:12",
+        wbcCode = "141 263 782",
+        updateTimeStamp = "2026061210121200000"
+    }
+};
+```
+
+Use `paymentDate` as the payment time field. `time` remains available as a deprecated backward-compatible alias.
+
+### Deleting an existing Bill from WeBirr Servers (if it is not paid)
+
+```C#
+using System;
+using System.Threading.Tasks;
+using WeBirr;
+
+namespace WeBirr.Example
+{
+    class Program
+    {
+        static readonly string apiKey = Environment.GetEnvironmentVariable("WEBIRR_TEST_ENV_API_KEY") ?? "";
+        static readonly string merchantId = Environment.GetEnvironmentVariable("WEBIRR_TEST_ENV_MERCHANT_ID") ?? "";
+
+        /// Deleting an existing Bill from WeBirr Servers (if it is not paid)
+        public static async Task DeleteBillAsync()
+        {
+            var api = new WeBirrClient(merchantId, apiKey, isTestEnv: true);
+
+            var paymentCode = "PAYMENT_CODE_YOU_SAVED_AFTER_CREATING_A_NEW_BILL"; // suchas as '141 263 782';
+
+            Console.WriteLine("Deleting Bill...");
+            var res = await api.DeleteBillAsync(paymentCode);
+
+            if (res.error == null)
+            {
+                // success
+                Console.WriteLine("bill is deleted successfully"); //res.res will be 'OK'  no need to check here!
+            }
+            else
+            {
+                // fail
+                Console.WriteLine($"error: {res.error}");
+                Console.WriteLine($"errorCode: {res.errorCode}"); // can be used to handle specific busines error such as ERROR_INVLAID_INPUT
+            }
+
+        }
+    }
+}
+
+```
+
+### Getting list of Payments and process them with Bulk Polling Consumer
+
+```C#
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using WeBirr;
+
+namespace WeBirr.Example
+{
+    class Program
+    {
+        static readonly string apiKey = Environment.GetEnvironmentVariable("WEBIRR_TEST_ENV_API_KEY") ?? "";
+        static readonly string merchantId = Environment.GetEnvironmentVariable("WEBIRR_TEST_ENV_MERCHANT_ID") ?? "";
 
         /// Getting list of Payments and process them with Bulk Polling Consumer
         public static async Task GetPaymentsAsync()
@@ -290,45 +381,10 @@ namespace WeBirr.Example
                 Console.WriteLine($"errorCode: {response.errorCode}"); // can be used to handle specific business error such as ERROR_INVALID_INPUT
             }
         }
-
-        /// Get basic statistics about bills created and payments received for a date range
-        public static async Task GetStatAsync()
-        {
-            var api = new WeBirrClient(merchantId, apiKey, isTestEnv: true);
-
-            var dateFrom = "2025-01-01"; // YYYY-MM-DD
-            var dateTo = "2030-01-31"; // YYYY-MM-DD
-
-            Console.WriteLine("Retrieving Statistics...");
-            Console.WriteLine($"Date From: {dateFrom}");
-            Console.WriteLine($"Date To: {dateTo}");
-
-            var response = await api.GetStatAsync(dateFrom, dateTo);
-
-            if (response.error == null)
-            {
-                // success
-                var stat = response.res;
-                Console.WriteLine($"Number of Bills Created: {stat.nBills}");
-                Console.WriteLine($"Number of Paid Bills: {stat.nBillsPaid}");
-                Console.WriteLine($"Number of Unpaid Bills: {stat.nBillsUnpaid}");
-                Console.WriteLine($"Amount of Bills: {stat.amountBills}");
-                Console.WriteLine($"Amount Paid: {stat.amountPaid}");
-                Console.WriteLine($"Amount Unpaid: {stat.amountUnpaid}");
-            }
-            else
-            {
-                // fail
-                Console.WriteLine($"error: {response.error}");
-                Console.WriteLine($"errorCode: {response.errorCode}");
-            }
-        }
     }
 }
 
 ```
-
-Timestamp cursors can be date-only (`yyyyMMdd`) or include time (`yyyyMMddHHmmss`). Use empty string only when you intentionally want all history from the beginning.
 
 ### Webhooks - Payment processing using Webhook Callbacks
 
@@ -444,6 +500,57 @@ public sealed class WebhookResult
 }
 
 // Once hosted, the webhook URL needs to be shared with WeBirr for configuration.
+```
+
+### Gettting basic Statistics about bills created and payments received for a date range
+
+```C#
+using System;
+using System.Threading.Tasks;
+using WeBirr;
+
+namespace WeBirr.Example
+{
+    class Program
+    {
+        static readonly string apiKey = Environment.GetEnvironmentVariable("WEBIRR_TEST_ENV_API_KEY") ?? "";
+        static readonly string merchantId = Environment.GetEnvironmentVariable("WEBIRR_TEST_ENV_MERCHANT_ID") ?? "";
+
+        /// Get basic statistics about bills created and payments received for a date range
+        public static async Task GetStatAsync()
+        {
+            var api = new WeBirrClient(merchantId, apiKey, isTestEnv: true);
+
+            var dateFrom = "2025-01-01"; // YYYY-MM-DD
+            var dateTo = "2030-01-31"; // YYYY-MM-DD
+
+            Console.WriteLine("Retrieving Statistics...");
+            Console.WriteLine($"Date From: {dateFrom}");
+            Console.WriteLine($"Date To: {dateTo}");
+
+            var response = await api.GetStatAsync(dateFrom, dateTo);
+
+            if (response.error == null)
+            {
+                // success
+                var stat = response.res;
+                Console.WriteLine($"Number of Bills Created: {stat.nBills}");
+                Console.WriteLine($"Number of Paid Bills: {stat.nBillsPaid}");
+                Console.WriteLine($"Number of Unpaid Bills: {stat.nBillsUnpaid}");
+                Console.WriteLine($"Amount of Bills: {stat.amountBills}");
+                Console.WriteLine($"Amount Paid: {stat.amountPaid}");
+                Console.WriteLine($"Amount Unpaid: {stat.amountUnpaid}");
+            }
+            else
+            {
+                // fail
+                Console.WriteLine($"error: {response.error}");
+                Console.WriteLine($"errorCode: {response.errorCode}");
+            }
+        }
+    }
+}
+
 ```
 
 ## Examples
