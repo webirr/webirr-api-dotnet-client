@@ -155,6 +155,16 @@ namespace WeBirr.Test
         }
 
         [Test]
+        public async Task GetSupportedBanks_should_get_error_from_WebService_on_invalid_api_key()
+        {
+            var api = new WeBirrClient("x", "x", true);
+
+            var res = await api.GetSupportedBanksAsync();
+
+            AssertApiError(res);
+        }
+
+        [Test]
         public async Task Preferred_constructor_sets_bill_merchant_id_before_sending()
         {
             var bill = SampleBill("dotnet/unit/" + Guid.NewGuid());
@@ -240,11 +250,13 @@ namespace WeBirr.Test
             var bills = await api.GetBillsAsync();
             var payments = await api.GetPaymentsAsync();
             var stat = await api.GetStatAsync("2025-01-01", "2025-01-02");
+            var supportedBanks = await api.GetSupportedBanksAsync();
 
             AssertApiError(bill);
             AssertApiError(bills);
             AssertApiError(payments);
             AssertApiError(stat);
+            AssertApiError(supportedBanks);
         }
 
         [Test]
@@ -301,7 +313,7 @@ namespace WeBirr.Test
                     ""time"": ""2026-06-12 10:00"",
                     ""description"": ""SDK Test Bill"",
                     ""amount"": ""278.00"",
-                    ""merchantID"": ""0305"",
+                    ""merchantID"": ""merchant-from-client"",
                     ""wbcCode"": ""123 456 789"",
                     ""paymentStatus"": 0,
                     ""updateTimeStamp"": ""2026061210000000000""
@@ -406,6 +418,24 @@ namespace WeBirr.Test
         }
 
         [Test]
+        public void SupportedBank_deserializes_gateway_fields()
+        {
+            var json = @"{
+                ""error"": null,
+                ""res"": [{
+                    ""bankID"": ""cbe_mobile"",
+                    ""name"": ""CBE Mobile Banking""
+                }]
+            }";
+
+            var response = JsonSerializer.Deserialize<ApiResponse<List<SupportedBank>>>(json, JsonOptions);
+            var bank = response.res.Single();
+
+            Assert.That(bank.bankID, Is.EqualTo("cbe_mobile"));
+            Assert.That(bank.name, Is.EqualTo("CBE Mobile Banking"));
+        }
+
+        [Test]
         [Category("TestEnv")]
         [Order(1)]
         public async Task TestEnv_CreateBill_without_manual_merchant_id()
@@ -504,6 +534,23 @@ namespace WeBirr.Test
 
             AssertNoApiError(stat);
             Assert.That(stat.res, Is.Not.Null);
+        }
+
+        [Test]
+        [Category("TestEnv")]
+        [Order(9)]
+        public async Task TestEnv_GetSupportedBanks_returns_merchant_scoped_bank_array()
+        {
+            var supportedBanks = await TestEnvApi().GetSupportedBanksAsync();
+
+            AssertNoApiError(supportedBanks);
+            Assert.That(supportedBanks.res, Is.Not.Null);
+            Assert.That(supportedBanks.res, Is.Not.Empty);
+            foreach (var bank in supportedBanks.res)
+            {
+                Assert.That(bank.bankID, Is.Not.Empty);
+                Assert.That(bank.name, Is.Not.Empty);
+            }
         }
 
         [Test]
@@ -656,6 +703,7 @@ namespace WeBirr.Test
             yield return new object[] { "GetBillsAsync", "einvoice/api/bills", new Dictionary<string, string> { { "payment_status", "-1" }, { "last_timestamp", "20251231" }, { "limit", "10" } } };
             yield return new object[] { "GetPaymentsAsync", "einvoice/api/payments", new Dictionary<string, string> { { "last_timestamp", "20251231" }, { "limit", "10" } } };
             yield return new object[] { "GetStatAsync", "merchant/stat", new Dictionary<string, string> { { "date_from", "2025-01-01" }, { "date_to", "2025-01-02" } } };
+            yield return new object[] { "GetSupportedBanksAsync", "einvoice/api/banks", null };
         }
 
         static string BuildUrl(WeBirrClient api, string path, Dictionary<string, string> parameters)

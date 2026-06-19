@@ -213,6 +213,48 @@ namespace WeBirr.Example
 
 Timestamp cursors can be date-only (`yyyyMMdd`) or include time (`yyyyMMddHHmmss`). Use empty string only when you intentionally want all history from the beginning.
 
+### Getting Supported Banks for Checkout
+
+```C#
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using WeBirr;
+
+namespace WeBirr.Example
+{
+    class Program
+    {
+        static readonly string apiKey = Environment.GetEnvironmentVariable("WEBIRR_TEST_ENV_API_KEY") ?? "";
+        static readonly string merchantId = Environment.GetEnvironmentVariable("WEBIRR_TEST_ENV_MERCHANT_ID") ?? "";
+
+        public static async Task GetSupportedBanksAsync()
+        {
+            var api = new WeBirrClient(merchantId, apiKey, isTestEnv: true);
+
+            Console.WriteLine("Getting supported banks...");
+            var response = await api.GetSupportedBanksAsync();
+
+            if (response.error == null)
+            {
+                foreach (var bank in response.res ?? new List<SupportedBank>())
+                {
+                    Console.WriteLine($"{bank.bankID} - {bank.name}");
+                }
+                Console.WriteLine("Use only these merchant-specific banks when showing checkout payment instructions.");
+            }
+            else
+            {
+                Console.WriteLine($"error: {response.error}");
+                Console.WriteLine($"errorCode: {response.errorCode}");
+            }
+        }
+    }
+}
+```
+
+Checkout pages should render bank-specific instructions only from `GetSupportedBanksAsync()`. Do not show a broad static bank list unless those banks are returned for the configured merchant.
+
 ### Getting Payment status of an existing Bill from WeBirr Servers
 
 ```C#
@@ -565,6 +607,7 @@ dotnet run --project WeBirr.Example -- bulk-payment-polling
 dotnet run --project WeBirr.Example -- stat-report
 dotnet run --project WeBirr.Example -- webhook
 dotnet run --project WeBirr.Example -- get-bill-and-list-bills
+dotnet run --project WeBirr.Example -- supported-banks
 ```
 
 Running `dotnet run --project WeBirr.Example` without a command runs the end-to-end TestEnv sample that creates, updates, reads, lists, polls, reports, and deletes a bill.
@@ -577,7 +620,7 @@ The old constructor remains available:
 var api = new WeBirrClient(apiKey, isTestEnv: true);
 ```
 
-For new merchant-scoped methods such as bill lookup, bill listing, payment bulk polling, and stats, use the preferred constructor with merchant ID.
+For new merchant-scoped methods such as bill lookup, bill listing, payment bulk polling, stats, and supported banks, use the preferred constructor with merchant ID.
 
 For batch or mass bill workloads, you can pass a caller-owned `HttpClient` so
 your application can use `IHttpClientFactory`, shared handlers, retry policies,

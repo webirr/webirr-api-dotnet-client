@@ -19,6 +19,7 @@ namespace WeBirr.Example
             { "stat-report", Example5StatReport.RunAsync },
             { "webhook", RunWebhookExampleAsync },
             { "get-bill-and-list-bills", Example7GetBillAndListBills.RunAsync },
+            { "supported-banks", Example8SupportedBanks.RunAsync },
             { "end-to-end", RunEndToEndAsync }
         };
 

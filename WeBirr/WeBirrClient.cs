@@ -152,6 +152,14 @@ namespace WeBirr
                 });
         }
 
+        public async Task<ApiResponse<List<SupportedBank>>> GetSupportedBanksAsync()
+        {
+            var merchantError = RequireMerchantId<List<SupportedBank>>();
+            if (merchantError != null) return merchantError;
+
+            return await SendAsync<List<SupportedBank>>(HttpMethod.Get, "einvoice/api/banks");
+        }
+
         void PrepareBill(Bill bill)
         {
             if (bill == null) return;
