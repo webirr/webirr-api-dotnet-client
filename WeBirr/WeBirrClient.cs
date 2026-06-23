@@ -15,6 +15,9 @@ namespace WeBirr
     /// </summary>
     public class WeBirrClient
     {
+        const string TestBaseAddress = "https://api.webirr.dev";
+        const string ProdBaseAddress = "https://api.webirr.net:8080";
+
         readonly string _baseAddress;
         readonly string _merchantId;
         readonly string _apiKey;
@@ -38,9 +41,25 @@ namespace WeBirr
         {
             _merchantId = merchantId ?? "";
             _apiKey = apiKey ?? "";
-            _baseAddress = isTestEnv ? "https://api.webirr.net" : "https://api.webirr.net:8080";
+            _baseAddress = ResolveBaseAddress(isTestEnv);
             _client = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
             EnsureJsonAcceptHeader(_client);
+        }
+
+        static string ResolveBaseAddress(bool isTestEnv)
+        {
+            if (!isTestEnv)
+            {
+                return ProdBaseAddress;
+            }
+
+            var gatewayUrl = Environment.GetEnvironmentVariable("GATEWAY_URL");
+            if (!string.IsNullOrWhiteSpace(gatewayUrl))
+            {
+                return gatewayUrl.Trim().TrimEnd('/');
+            }
+
+            return TestBaseAddress;
         }
 
         /// <summary>
