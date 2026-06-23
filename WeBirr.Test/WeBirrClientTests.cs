@@ -210,6 +210,45 @@ namespace WeBirr.Test
         }
 
         [Test]
+        public void TestEnv_defaults_to_dev_gateway()
+        {
+            WithGatewayUrl(null, () =>
+            {
+                var api = new WeBirrClient("merchant-from-client", "x", true);
+
+                var url = BuildUrl(api, "einvoice/api/bill", null);
+
+                Assert.That(url, Does.StartWith("https://api.webirr.dev/einvoice/api/bill?"));
+            });
+        }
+
+        [Test]
+        public void TestEnv_can_use_internal_gateway_url_override()
+        {
+            WithGatewayUrl("https://local-gateway.example/", () =>
+            {
+                var api = new WeBirrClient("merchant-from-client", "x", true);
+
+                var url = BuildUrl(api, "einvoice/api/bill", null);
+
+                Assert.That(url, Does.StartWith("https://local-gateway.example/einvoice/api/bill?"));
+            });
+        }
+
+        [Test]
+        public void ProdEnv_ignores_internal_gateway_url_override()
+        {
+            WithGatewayUrl("https://local-gateway.example/", () =>
+            {
+                var api = new WeBirrClient("merchant-from-client", "x", false);
+
+                var url = BuildUrl(api, "einvoice/api/bill", null);
+
+                Assert.That(url, Does.StartWith("https://api.webirr.net:8080/einvoice/api/bill?"));
+            });
+        }
+
+        [Test]
         public void Legacy_constructor_does_not_overwrite_existing_bill_merchant_id_with_empty_client_merchant_id()
         {
             var bill = SampleBill("dotnet/unit/" + Guid.NewGuid());
@@ -716,6 +755,21 @@ namespace WeBirr.Test
         {
             var method = typeof(WeBirrClient).GetMethod("PrepareBill", BindingFlags.Instance | BindingFlags.NonPublic);
             method.Invoke(api, new object[] { bill });
+        }
+
+        static void WithGatewayUrl(string value, Action action)
+        {
+            var previous = Environment.GetEnvironmentVariable("GATEWAY_URL");
+            Environment.SetEnvironmentVariable("GATEWAY_URL", value);
+
+            try
+            {
+                action();
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable("GATEWAY_URL", previous);
+            }
         }
 
         sealed class StubHttpMessageHandler : HttpMessageHandler
