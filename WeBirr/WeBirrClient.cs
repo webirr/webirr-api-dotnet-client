@@ -27,11 +27,6 @@ namespace WeBirr
             PropertyNameCaseInsensitive = true
         };
 
-        public WeBirrClient(string apikey, bool isTestEnv)
-            : this("", apikey, isTestEnv)
-        {
-        }
-
         public WeBirrClient(string merchantId, string apiKey, bool isTestEnv)
             : this(merchantId, apiKey, isTestEnv, new HttpClient())
         {
