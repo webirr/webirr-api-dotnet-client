@@ -614,7 +614,7 @@ Running `dotnet run --project WeBirr.Example` without a command runs the end-to-
 
 ## Backward Compatibility
 
-In 2.x, the client constructor requires the merchant ID argument. For merchant-scoped methods such as bill lookup, bill listing, payment bulk polling, stats, and supported banks, use the constructor with merchant ID.
+In 2.x, the client constructor requires the merchant ID argument. The client sends `merchant_id` on every request and sets `Bill.merchantID` from the client value before create/update calls.
 
 For batch or mass bill workloads, you can pass a caller-owned `HttpClient` so
 your application can use `IHttpClientFactory`, shared handlers, retry policies,

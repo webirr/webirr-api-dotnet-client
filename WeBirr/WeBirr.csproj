@@ -4,7 +4,7 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <RootNamespace>WeBirr</RootNamespace>
     <PackageId>WeBirr</PackageId>
-    <Version>2.0.1</Version>
+    <Version>2.0.2</Version>
     <Authors>WeBirr</Authors>
     <Product>WeBirr</Product>
     <Description>Official .NET Client Library for WeBirr Payment Gateway APIs</Description>
@@ -12,7 +12,7 @@
     <RepositoryUrl>https://github.com/webirr/webirr-api-dotnet-client</RepositoryUrl>
     <PackageIcon>512x512.png</PackageIcon>
     <PackageIconUrl />
-    <PackageReleaseNotes>merchant id constructor</PackageReleaseNotes>
+    <PackageReleaseNotes>merchant id behavior</PackageReleaseNotes>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageTags>fintech, ethiopia</PackageTags>
     <RepositoryType>git</RepositoryType>
