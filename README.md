@@ -614,13 +614,7 @@ Running `dotnet run --project WeBirr.Example` without a command runs the end-to-
 
 ## Backward Compatibility
 
-The old constructor remains available:
-
-```csharp
-var api = new WeBirrClient(apiKey, isTestEnv: true);
-```
-
-For new merchant-scoped methods such as bill lookup, bill listing, payment bulk polling, stats, and supported banks, use the preferred constructor with merchant ID.
+In 2.x, the client constructor requires the merchant ID argument. For merchant-scoped methods such as bill lookup, bill listing, payment bulk polling, stats, and supported banks, use the constructor with merchant ID.
 
 For batch or mass bill workloads, you can pass a caller-owned `HttpClient` so
 your application can use `IHttpClientFactory`, shared handlers, retry policies,

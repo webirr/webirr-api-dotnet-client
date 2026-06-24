@@ -55,7 +55,7 @@ namespace WeBirr.Test
         public async Task CreateBill_should_get_error_from_WebService_on_invalid_api_key_TestEnv()
         {
             var bill = SampleBill("dotnet/unit/" + Guid.NewGuid());
-            var api = new WeBirrClient("x", true);
+            var api = new WeBirrClient("invalid-merchant", "x", true);
 
             var res = await api.CreateBillAsync(bill);
 
@@ -66,7 +66,7 @@ namespace WeBirr.Test
         public async Task CreateBill_should_get_error_from_WebService_on_invalid_api_key_ProdEnv()
         {
             var bill = SampleBill("dotnet/unit/" + Guid.NewGuid());
-            var api = new WeBirrClient("x", false);
+            var api = new WeBirrClient("invalid-merchant", "x", false);
 
             var res = await api.CreateBillAsync(bill);
 
@@ -77,7 +77,7 @@ namespace WeBirr.Test
         public async Task UpdateBill_should_get_error_from_WebService_on_invalid_api_key()
         {
             var bill = SampleBill("dotnet/unit/" + Guid.NewGuid());
-            var api = new WeBirrClient("x", true);
+            var api = new WeBirrClient("invalid-merchant", "x", true);
 
             var res = await api.UpdateBillAsync(bill);
 
@@ -87,7 +87,7 @@ namespace WeBirr.Test
         [Test]
         public async Task DeleteBill_should_get_error_from_WebService_on_invalid_api_key()
         {
-            var api = new WeBirrClient("x", true);
+            var api = new WeBirrClient("invalid-merchant", "x", true);
 
             var res = await api.DeleteBillAsync("xxxx");
 
@@ -97,7 +97,7 @@ namespace WeBirr.Test
         [Test]
         public async Task GetPaymentStatus_should_get_error_from_WebService_on_invalid_api_key()
         {
-            var api = new WeBirrClient("x", true);
+            var api = new WeBirrClient("invalid-merchant", "x", true);
 
             var res = await api.GetPaymentStatusAsync("xxxx");
 
@@ -249,11 +249,11 @@ namespace WeBirr.Test
         }
 
         [Test]
-        public void Legacy_constructor_does_not_overwrite_existing_bill_merchant_id_with_empty_client_merchant_id()
+        public void Empty_client_merchant_id_does_not_overwrite_existing_bill_merchant_id()
         {
             var bill = SampleBill("dotnet/unit/" + Guid.NewGuid());
             bill.merchantID = "merchant-on-bill";
-            var api = new WeBirrClient("x", true);
+            var api = new WeBirrClient("", "x", true);
 
             InvokePrepareBill(api, bill);
 
@@ -273,7 +273,7 @@ namespace WeBirr.Test
         [TestCaseSource(nameof(SdkEndpointQueryCases))]
         public void Url_builder_omits_merchant_id_for_all_endpoint_parameter_shapes_when_client_merchant_id_is_empty(string endpoint, string path, Dictionary<string, string> parameters)
         {
-            var api = new WeBirrClient("x", true);
+            var api = new WeBirrClient("", "x", true);
 
             var url = BuildUrl(api, path, parameters);
 
@@ -281,9 +281,9 @@ namespace WeBirr.Test
         }
 
         [Test]
-        public async Task Merchant_scoped_methods_require_preferred_constructor()
+        public async Task Merchant_scoped_methods_require_non_empty_merchant_id()
         {
-            var api = new WeBirrClient("x", true);
+            var api = new WeBirrClient("", "x", true);
 
             var bill = await api.GetBillByReferenceAsync("missing-reference");
             var bills = await api.GetBillsAsync();
