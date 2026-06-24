@@ -249,7 +249,7 @@ namespace WeBirr.Test
         }
 
         [Test]
-        public void Empty_client_merchant_id_does_not_overwrite_existing_bill_merchant_id()
+        public void Empty_client_merchant_id_overwrites_existing_bill_merchant_id()
         {
             var bill = SampleBill("dotnet/unit/" + Guid.NewGuid());
             bill.merchantID = "merchant-on-bill";
@@ -257,7 +257,7 @@ namespace WeBirr.Test
 
             InvokePrepareBill(api, bill);
 
-            Assert.That(bill.merchantID, Is.EqualTo("merchant-on-bill"));
+            Assert.That(bill.merchantID, Is.EqualTo(""));
         }
 
         [TestCaseSource(nameof(SdkEndpointQueryCases))]
@@ -271,31 +271,13 @@ namespace WeBirr.Test
         }
 
         [TestCaseSource(nameof(SdkEndpointQueryCases))]
-        public void Url_builder_omits_merchant_id_for_all_endpoint_parameter_shapes_when_client_merchant_id_is_empty(string endpoint, string path, Dictionary<string, string> parameters)
+        public void Url_builder_includes_empty_merchant_id_for_all_endpoint_parameter_shapes_when_client_merchant_id_is_empty(string endpoint, string path, Dictionary<string, string> parameters)
         {
             var api = new WeBirrClient("", "x", true);
 
             var url = BuildUrl(api, path, parameters);
 
-            Assert.That(url, Does.Not.Contain("merchant_id="), endpoint);
-        }
-
-        [Test]
-        public async Task Merchant_scoped_methods_require_non_empty_merchant_id()
-        {
-            var api = new WeBirrClient("", "x", true);
-
-            var bill = await api.GetBillByReferenceAsync("missing-reference");
-            var bills = await api.GetBillsAsync();
-            var payments = await api.GetPaymentsAsync();
-            var stat = await api.GetStatAsync("2025-01-01", "2025-01-02");
-            var supportedBanks = await api.GetSupportedBanksAsync();
-
-            AssertApiError(bill);
-            AssertApiError(bills);
-            AssertApiError(payments);
-            AssertApiError(stat);
-            AssertApiError(supportedBanks);
+            Assert.That(url, Does.Contain("merchant_id="), endpoint);
         }
 
         [Test]

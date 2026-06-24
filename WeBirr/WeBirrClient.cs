@@ -100,9 +100,6 @@ namespace WeBirr
 
         public async Task<ApiResponse<BillResponse>> GetBillByReferenceAsync(string billReference)
         {
-            var merchantError = RequireMerchantId<BillResponse>();
-            if (merchantError != null) return merchantError;
-
             return await SendAsync<BillResponse>(
                 HttpMethod.Get,
                 "einvoice/api/bill",
@@ -111,9 +108,6 @@ namespace WeBirr
 
         public async Task<ApiResponse<BillResponse>> GetBillByPaymentCodeAsync(string paymentCode)
         {
-            var merchantError = RequireMerchantId<BillResponse>();
-            if (merchantError != null) return merchantError;
-
             return await SendAsync<BillResponse>(
                 HttpMethod.Get,
                 "einvoice/api/bill",
@@ -122,9 +116,6 @@ namespace WeBirr
 
         public async Task<ApiResponse<List<BillResponse>>> GetBillsAsync(int paymentStatus = -1, string lastTimeStamp = "", int limit = 100)
         {
-            var merchantError = RequireMerchantId<List<BillResponse>>();
-            if (merchantError != null) return merchantError;
-
             return await SendAsync<List<BillResponse>>(
                 HttpMethod.Get,
                 "einvoice/api/bills",
@@ -138,9 +129,6 @@ namespace WeBirr
 
         public async Task<ApiResponse<List<PaymentResponse>>> GetPaymentsAsync(string lastTimeStamp = "", int limit = 100)
         {
-            var merchantError = RequireMerchantId<List<PaymentResponse>>();
-            if (merchantError != null) return merchantError;
-
             return await SendAsync<List<PaymentResponse>>(
                 HttpMethod.Get,
                 "einvoice/api/payments",
@@ -153,9 +141,6 @@ namespace WeBirr
 
         public async Task<ApiResponse<Stat>> GetStatAsync(string dateFrom, string dateTo)
         {
-            var merchantError = RequireMerchantId<Stat>();
-            if (merchantError != null) return merchantError;
-
             return await SendAsync<Stat>(
                 HttpMethod.Get,
                 "merchant/stat",
@@ -168,19 +153,13 @@ namespace WeBirr
 
         public async Task<ApiResponse<List<SupportedBank>>> GetSupportedBanksAsync()
         {
-            var merchantError = RequireMerchantId<List<SupportedBank>>();
-            if (merchantError != null) return merchantError;
-
             return await SendAsync<List<SupportedBank>>(HttpMethod.Get, "einvoice/api/banks");
         }
 
         void PrepareBill(Bill bill)
         {
             if (bill == null) return;
-            if (!string.IsNullOrEmpty(_merchantId))
-            {
-                bill.merchantID = _merchantId;
-            }
+            bill.merchantID = _merchantId;
         }
 
         async Task<ApiResponse<T>> SendJsonAsync<T>(HttpMethod method, string path, object body) where T : class
@@ -218,13 +197,9 @@ namespace WeBirr
         {
             var query = new Dictionary<string, string>
             {
-                { "api_key", _apiKey }
+                { "api_key", _apiKey },
+                { "merchant_id", _merchantId }
             };
-
-            if (!string.IsNullOrEmpty(_merchantId))
-            {
-                query["merchant_id"] = _merchantId;
-            }
 
             if (parameters != null)
             {
@@ -236,13 +211,6 @@ namespace WeBirr
 
             return string.Join("&", query.Select(item =>
                 $"{Uri.EscapeDataString(item.Key)}={Uri.EscapeDataString(item.Value)}"));
-        }
-
-        ApiResponse<T> RequireMerchantId<T>() where T : class
-        {
-            return string.IsNullOrEmpty(_merchantId)
-                ? new ApiResponse<T> { error = "merchant_id is required. Use WeBirrClient(string merchantId, string apiKey, bool isTestEnv)." }
-                : null;
         }
 
         static void EnsureJsonAcceptHeader(HttpClient client)
