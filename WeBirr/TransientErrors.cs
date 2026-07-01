@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Net;
 using System.Net.Http;
 using System.Reflection;
@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace WeBirr
 {
-    public static class WebirrErrors
+    public static class TransientErrors
     {
         const string StatusCodeDataKey = "WebirrStatusCode";
 

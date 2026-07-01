@@ -186,7 +186,7 @@ namespace WeBirr.Test
             var ex = Assert.ThrowsAsync<HttpRequestException>(() => api.DeleteBillAsync("123456789"));
 
             Assert.That(ex.Data["WebirrStatusCode"], Is.EqualTo((int)HttpStatusCode.BadGateway));
-            Assert.That(WebirrErrors.IsTransient(ex), Is.True);
+            Assert.That(TransientErrors.IsTransient(ex), Is.True);
         }
 
         [Test]
@@ -208,27 +208,27 @@ namespace WeBirr.Test
         }
 
         [Test]
-        public void WebirrErrors_classifies_transient_http_statuses()
+        public void TransientErrors_classifies_transient_http_statuses()
         {
-            Assert.That(WebirrErrors.IsTransient(HttpException(HttpStatusCode.BadGateway)), Is.True);
-            Assert.That(WebirrErrors.IsTransient(HttpException((HttpStatusCode)429)), Is.True);
-            Assert.That(WebirrErrors.IsTransient(HttpException(HttpStatusCode.RequestTimeout)), Is.True);
-            Assert.That(WebirrErrors.IsTransient(HttpException(HttpStatusCode.BadRequest)), Is.False);
-            Assert.That(WebirrErrors.IsTransient(HttpExceptionWithData(HttpStatusCode.ServiceUnavailable)), Is.True);
-            Assert.That(WebirrErrors.IsTransient(HttpExceptionWithData(HttpStatusCode.BadRequest)), Is.False);
+            Assert.That(TransientErrors.IsTransient(HttpException(HttpStatusCode.BadGateway)), Is.True);
+            Assert.That(TransientErrors.IsTransient(HttpException((HttpStatusCode)429)), Is.True);
+            Assert.That(TransientErrors.IsTransient(HttpException(HttpStatusCode.RequestTimeout)), Is.True);
+            Assert.That(TransientErrors.IsTransient(HttpException(HttpStatusCode.BadRequest)), Is.False);
+            Assert.That(TransientErrors.IsTransient(HttpExceptionWithData(HttpStatusCode.ServiceUnavailable)), Is.True);
+            Assert.That(TransientErrors.IsTransient(HttpExceptionWithData(HttpStatusCode.BadRequest)), Is.False);
         }
 
         [Test]
-        public void WebirrErrors_classifies_transport_timeout_and_caller_cancel()
+        public void TransientErrors_classifies_transport_timeout_and_caller_cancel()
         {
-            Assert.That(WebirrErrors.IsTransient(new HttpRequestException("connection refused")), Is.True);
-            Assert.That(WebirrErrors.IsTransient(new TaskCanceledException("timeout")), Is.True);
-            Assert.That(WebirrErrors.IsTransient(new TaskCanceledException("timeout", new TimeoutException())), Is.True);
+            Assert.That(TransientErrors.IsTransient(new HttpRequestException("connection refused")), Is.True);
+            Assert.That(TransientErrors.IsTransient(new TaskCanceledException("timeout")), Is.True);
+            Assert.That(TransientErrors.IsTransient(new TaskCanceledException("timeout", new TimeoutException())), Is.True);
             var cancellation = new CancellationTokenSource();
             cancellation.Cancel();
-            Assert.That(WebirrErrors.IsTransient(new TaskCanceledException("caller canceled", null, cancellation.Token)), Is.False);
-            Assert.That(WebirrErrors.IsTransient(new OperationCanceledException("caller canceled", cancellation.Token)), Is.False);
-            Assert.That(WebirrErrors.IsTransient(new JsonException("bad json")), Is.False);
+            Assert.That(TransientErrors.IsTransient(new TaskCanceledException("caller canceled", null, cancellation.Token)), Is.False);
+            Assert.That(TransientErrors.IsTransient(new OperationCanceledException("caller canceled", cancellation.Token)), Is.False);
+            Assert.That(TransientErrors.IsTransient(new JsonException("bad json")), Is.False);
         }
 
         [Test]
