@@ -34,6 +34,46 @@ export WEBIRR_TEST_ENV_API_KEY="YOUR_TEST_API_KEY"
 
 Create the client with merchant ID, API key, and environment once. The client automatically sets `Bill.merchantID` before sending bill create/update requests, so application code and examples should not set `merchantID` on the bill object.
 
+## Error handling & retries
+
+WeBirr business errors come back on an HTTP 2xx response in `ApiResponse.error` / `ApiResponse.errorCode`, such as invalid API key, duplicate bill reference, or validation errors. Everything else is a platform error surfaced through .NET exceptions: network/DNS/TLS failures, `TaskCanceledException` timeouts, non-2xx HTTP as `HttpRequestException`, and empty or non-JSON 2xx bodies as `JsonException`.
+
+Retry only transient platform failures with exponential backoff and jitter: connection errors, timeouts, and HTTP 5xx / 429 / 408. Use `WebirrErrors.IsTransient(exception)` to apply that rule. Never retry other 4xx responses.
+
+Create and read operations are safe to retry. `DeleteBill` is also safe to retry, but a retry after it already succeeded returns an "invalid payment code" business error; treat that as already deleted.
+
+```C#
+try
+{
+    var response = await api.CreateBillAsync(bill);
+
+    if (!string.IsNullOrEmpty(response.error))
+    {
+        // WeBirr business error from a 2xx response envelope.
+        Console.WriteLine($"WeBirr error {response.errorCode}: {response.error}");
+        return;
+    }
+
+    Console.WriteLine($"Payment Code = {response.res}");
+}
+catch (TaskCanceledException ex) when (WebirrErrors.IsTransient(ex))
+{
+    // Timeout. Safe to retry with backoff + jitter.
+}
+catch (HttpRequestException ex) when (WebirrErrors.IsTransient(ex))
+{
+    // Transport, 5xx, 429, or 408. Safe to retry with backoff + jitter.
+}
+catch (HttpRequestException)
+{
+    // Non-transient non-2xx or transport failure.
+}
+catch (JsonException)
+{
+    // Empty or non-JSON 2xx body.
+}
+```
+
 ## Example
 
 The examples below keep the original .NET README flow: create the client, call the API, check `error`, handle the success branch, and print `errorCode` on failure.

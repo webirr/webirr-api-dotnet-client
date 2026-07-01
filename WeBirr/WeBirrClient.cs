@@ -179,12 +179,14 @@ namespace WeBirr
             var resp = await _client.SendAsync(request);
             if (!resp.IsSuccessStatusCode)
             {
-                return new ApiResponse<T> { error = $"http error {resp.StatusCode} {resp.ReasonPhrase}" };
+                var ex = new HttpRequestException($"http error {(int)resp.StatusCode} {resp.ReasonPhrase}");
+                ex.Data["WebirrStatusCode"] = (int)resp.StatusCode;
+                throw ex;
             }
 
             var body = await resp.Content.ReadAsStringAsync();
             return JsonSerializer.Deserialize<ApiResponse<T>>(body, JsonOptions)
-                ?? new ApiResponse<T> { error = "empty response" };
+                ?? throw new JsonException("Invalid WeBirr API response.");
         }
 
         string BuildUrl(string path, IDictionary<string, string> parameters = null)

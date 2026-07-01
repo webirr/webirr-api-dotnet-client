@@ -165,6 +165,73 @@ namespace WeBirr.Test
         }
 
         [Test]
+        public async Task Http_2xx_business_error_returns_api_response()
+        {
+            var handler = new StubHttpMessageHandler(
+                @"{""error"":""invalid api key"",""errorCode"":""ERROR_INVALID_API_KEY"",""res"":null}");
+            var api = new WeBirrClient("merchant-from-client", "x", true, new HttpClient(handler));
+
+            var response = await api.DeleteBillAsync("123456789");
+
+            Assert.That(response.error, Is.EqualTo("invalid api key"));
+            Assert.That(response.errorCode, Is.EqualTo("ERROR_INVALID_API_KEY"));
+        }
+
+        [Test]
+        public void Non_2xx_response_throws_http_request_exception()
+        {
+            var handler = new StubHttpMessageHandler("gateway unavailable", HttpStatusCode.BadGateway);
+            var api = new WeBirrClient("merchant-from-client", "x", true, new HttpClient(handler));
+
+            var ex = Assert.ThrowsAsync<HttpRequestException>(() => api.DeleteBillAsync("123456789"));
+
+            Assert.That(ex.Data["WebirrStatusCode"], Is.EqualTo((int)HttpStatusCode.BadGateway));
+            Assert.That(WebirrErrors.IsTransient(ex), Is.True);
+        }
+
+        [Test]
+        public void Empty_2xx_response_throws_json_exception()
+        {
+            var handler = new StubHttpMessageHandler("");
+            var api = new WeBirrClient("merchant-from-client", "x", true, new HttpClient(handler));
+
+            Assert.ThrowsAsync<JsonException>(() => api.DeleteBillAsync("123456789"));
+        }
+
+        [Test]
+        public void Garbage_2xx_response_throws_json_exception()
+        {
+            var handler = new StubHttpMessageHandler("not json");
+            var api = new WeBirrClient("merchant-from-client", "x", true, new HttpClient(handler));
+
+            Assert.ThrowsAsync<JsonException>(() => api.DeleteBillAsync("123456789"));
+        }
+
+        [Test]
+        public void WebirrErrors_classifies_transient_http_statuses()
+        {
+            Assert.That(WebirrErrors.IsTransient(HttpException(HttpStatusCode.BadGateway)), Is.True);
+            Assert.That(WebirrErrors.IsTransient(HttpException((HttpStatusCode)429)), Is.True);
+            Assert.That(WebirrErrors.IsTransient(HttpException(HttpStatusCode.RequestTimeout)), Is.True);
+            Assert.That(WebirrErrors.IsTransient(HttpException(HttpStatusCode.BadRequest)), Is.False);
+            Assert.That(WebirrErrors.IsTransient(HttpExceptionWithData(HttpStatusCode.ServiceUnavailable)), Is.True);
+            Assert.That(WebirrErrors.IsTransient(HttpExceptionWithData(HttpStatusCode.BadRequest)), Is.False);
+        }
+
+        [Test]
+        public void WebirrErrors_classifies_transport_timeout_and_caller_cancel()
+        {
+            Assert.That(WebirrErrors.IsTransient(new HttpRequestException("connection refused")), Is.True);
+            Assert.That(WebirrErrors.IsTransient(new TaskCanceledException("timeout")), Is.True);
+            Assert.That(WebirrErrors.IsTransient(new TaskCanceledException("timeout", new TimeoutException())), Is.True);
+            var cancellation = new CancellationTokenSource();
+            cancellation.Cancel();
+            Assert.That(WebirrErrors.IsTransient(new TaskCanceledException("caller canceled", null, cancellation.Token)), Is.False);
+            Assert.That(WebirrErrors.IsTransient(new OperationCanceledException("caller canceled", cancellation.Token)), Is.False);
+            Assert.That(WebirrErrors.IsTransient(new JsonException("bad json")), Is.False);
+        }
+
+        [Test]
         public async Task Preferred_constructor_sets_bill_merchant_id_before_sending()
         {
             var bill = SampleBill("dotnet/unit/" + Guid.NewGuid());
@@ -754,13 +821,27 @@ namespace WeBirr.Test
             }
         }
 
+        static HttpRequestException HttpException(HttpStatusCode statusCode)
+        {
+            return new HttpRequestException("http error", null, statusCode);
+        }
+
+        static HttpRequestException HttpExceptionWithData(HttpStatusCode statusCode)
+        {
+            var ex = new HttpRequestException("http error");
+            ex.Data["WebirrStatusCode"] = (int)statusCode;
+            return ex;
+        }
+
         sealed class StubHttpMessageHandler : HttpMessageHandler
         {
             readonly string _responseBody;
+            readonly HttpStatusCode _statusCode;
 
-            public StubHttpMessageHandler(string responseBody)
+            public StubHttpMessageHandler(string responseBody, HttpStatusCode statusCode = HttpStatusCode.OK)
             {
                 _responseBody = responseBody;
+                _statusCode = statusCode;
             }
 
             public List<HttpRequestMessage> Requests { get; } = new List<HttpRequestMessage>();
@@ -768,7 +849,7 @@ namespace WeBirr.Test
             protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
             {
                 Requests.Add(request);
-                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                return Task.FromResult(new HttpResponseMessage(_statusCode)
                 {
                     Content = new StringContent(_responseBody, Encoding.UTF8, "application/json")
                 });
